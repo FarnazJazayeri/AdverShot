@@ -74,10 +74,6 @@ class Learner(nn.Module):
                 raise NotImplementedError
 
 
-
-
-
-
     def extra_repr(self):
         info = ''
 

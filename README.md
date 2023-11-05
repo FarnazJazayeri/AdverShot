@@ -42,13 +42,18 @@ This project focuses on addressing the research problems of adversarial robustne
 
 ## Overall Implementation structure
 # data
-- dataloader
+- dataloader 
+  - return x_spt, y_spt, x_qry, y_qry 
+  - x: Meta batck size (num_task) x N_way*K_shot x C x H x W
+  - y: Meta batck size (num_task) x N_way*K_shot
+    (1 common N_way for the support and querry sets)
+    (K_shot_sp, K_shot_querry)
 - omniglot
 - mini-imagenet
 - cub
 
 # model
-- meta_learner
+- meta_learner: can be implemented with any models like protonet used for maml
 - protonet
 - proposednet
 
