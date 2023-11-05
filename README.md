@@ -40,5 +40,43 @@ This project focuses on addressing the research problems of adversarial robustne
 - Utilized various experiments and averaged the results.
 - Analyzed the outcomes and prepared visualizations for better understanding.
 
+## Overall Implementation structure
+# data
+- dataloader
+- omniglot
+- mini-imagenet
+- cub
+
+# model
+- meta_learner
+- protonet
+- proposednet
+
+# tools
+- attacks
+  - fgsm (white-box)
+  - pgd (white-box)
+  - pixle (black-box)
+- defense
+- losses
+- train
+- test
+
+# experiments
+- omniglot
+  - meta_learner
+  - protonet
+  - proposednet
+- mini-imagenet
+  - meta_learner
+  - protonet
+  - proposednet
+- cub
+  - meta_learner
+  - protonet
+  - proposednet
+
+# main
+
 ## References
 - [List relevant references here]
