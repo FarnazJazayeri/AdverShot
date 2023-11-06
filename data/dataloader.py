@@ -7,7 +7,7 @@ import  numpy as np
 
 class DataLoader:
 
-    def __init__(self, data_name, root, batchsz, n_way, k_shot, k_query, imgsz):
+    def __init__(self, data_name, root, batchsz, n_way, k_shot, k_query, imgsz, num_episodes=10, train_percent=0.75):
         """
         Different from mnistNShot, the
         :param root:
@@ -20,6 +20,7 @@ class DataLoader:
 
         self.data_name = data_name
         self.resize = imgsz
+        self.num_episodes = num_episodes
         if not os.path.isfile(os.path.join(root, f'{data_name}.npy')):
             # if root/data.npy does not exist, just download it
             if data_name == "omniglot":
@@ -44,7 +45,7 @@ class DataLoader:
                 self.x.append(np.array(imgs))
 
             # as different class may have different number of imgs
-            self.x = np.array(self.x).astype(np.float)  # [[20 imgs],..., 1623 classes in total]
+            self.x = np.array(self.x).astype(float)  # [[20 imgs],..., 1623 classes in total]
             # each character contains 20 imgs
             print('data shape:', self.x.shape)  # [1623, 20, 84, 84, 1]
             temp = []  # Free memory
@@ -58,7 +59,7 @@ class DataLoader:
 
         # [1623, 20, 84, 84, 1]
         # TODO: can not shuffle here, we must keep training and test set distinct!
-        self.x_train, self.x_test = self.x[:1200], self.x[1200:]
+        self.x_train, self.x_test = self.x[:int(train_percent * self.x.shape[0])], self.x[int(train_percent * self.x.shape[0]):]
 
         # self.normalization()
 
@@ -108,13 +109,13 @@ class DataLoader:
         data_cache = []
 
         # print('preload next 50 caches of batchsz of batch.')
-        for sample in range(10):  # num of episodes
+        for sample in range(self.num_episodes):  # num of episodes
 
-            x_spts, y_spts, x_qrys, y_qrys = [], [], [], []
+            x_spts, y_spts, y_cls_spts, x_qrys, y_qrys, y_cls_qrys = [], [], [], [], [], []
             for i in range(self.batchsz):  # one batch means one set
 
                 x_spt, y_spt, x_qry, y_qry = [], [], [], []
-                selected_cls = np.random.choice(data_pack.shape[0], self.n_way, False)
+                selected_cls = np.random.choice(data_pack.shape[0], self.n_way, False) # data_pack.shape[0] = 1200 (train), 423 (test)
 
                 for j, cur_class in enumerate(selected_cls):
 
@@ -123,32 +124,39 @@ class DataLoader:
                     # meta-training and meta-test
                     x_spt.append(data_pack[cur_class][selected_img[:self.k_shot]])
                     x_qry.append(data_pack[cur_class][selected_img[self.k_shot:]])
-                    y_spt.append([j for _ in range(self.k_shot)])
-                    y_qry.append([j for _ in range(self.k_query)])
+                    y_spt.append([j for _ in range(self.k_shot)]) ### 0 -> k-1
+                    y_qry.append([j for _ in range(self.k_query)]) ### 0 -> k-1
+                    y_cls_spt.append([cur_class for _ in range(self.k_shot)]) ### 0 -> k-1
+                    y_cls_qry.append([cur_class for _ in range(self.k_query)]) ### 0 -> k-1
 
                 # shuffle inside a batch
                 perm = np.random.permutation(self.n_way * self.k_shot)
                 x_spt = np.array(x_spt).reshape(self.n_way * self.k_shot, 1, self.resize, self.resize)[perm]
                 y_spt = np.array(y_spt).reshape(self.n_way * self.k_shot)[perm]
+                y_cls_spt = np.array(y_cls_spt).reshape(self.n_way * self.k_shot)[perm]
+                #
                 perm = np.random.permutation(self.n_way * self.k_query)
                 x_qry = np.array(x_qry).reshape(self.n_way * self.k_query, 1, self.resize, self.resize)[perm]
                 y_qry = np.array(y_qry).reshape(self.n_way * self.k_query)[perm]
-
+                y_cls_qry = np.array(y_cls_qry).reshape(self.n_way * self.k_query)[perm]
                 # append [sptsz, 1, 84, 84] => [b, setsz, 1, 84, 84]
                 x_spts.append(x_spt)
                 y_spts.append(y_spt)
+                y_cls_spts.append(y_cls_spt)
                 x_qrys.append(x_qry)
                 y_qrys.append(y_qry)
+                y_cls_qrys.append(y_cls_qry)
 
 
             # [b, setsz, 1, 84, 84]
             x_spts = np.array(x_spts).astype(np.float32).reshape(self.batchsz, setsz, 1, self.resize, self.resize)
-            y_spts = np.array(y_spts).astype(np.int).reshape(self.batchsz, setsz)
+            y_spts = np.array(y_spts).astype(int).reshape(self.batchsz, setsz)
+            y_cls_spts = np.array(y_cls_spts).astype(int).reshape(self.batchsz, setsz)
             # [b, qrysz, 1, 84, 84]
             x_qrys = np.array(x_qrys).astype(np.float32).reshape(self.batchsz, querysz, 1, self.resize, self.resize)
-            y_qrys = np.array(y_qrys).astype(np.int).reshape(self.batchsz, querysz)
-
-            data_cache.append([x_spts, y_spts, x_qrys, y_qrys])
+            y_qrys = np.array(y_qrys).astype(int).reshape(self.batchsz, querysz)
+            y_cls_qrys = np.array(y_cls_qrys).astype(int).reshape(self.batchsz, querysz)
+            data_cache.append([x_spts, y_spts, y_cls_spts, x_qrys, y_qrys, y_cls_qrys])
 
         return data_cache
 
@@ -173,12 +181,11 @@ if __name__ == '__main__':
 
     import  time
     import  torch
-    import  visdom
 
     # plt.ion()
-    viz = visdom.Visdom(env='omniglot_view')
+    #viz = visdom.Visdom(env='omniglot_view')
 
-    db = DataLoader('omniglot', 'db/omniglot', batchsz=20, n_way=5, k_shot=5, k_query=15, imgsz=64)
+    db = DataLoader('omniglot', 'omniglot', batchsz=20, n_way=5, k_shot=5, k_query=15, imgsz=28)
 
     for i in range(1000):
         x_spt, y_spt, x_qry, y_qry = db.next('train')
@@ -191,12 +198,4 @@ if __name__ == '__main__':
         y_qry = torch.from_numpy(y_qry)
         batchsz, setsz, c, h, w = x_spt.size()
 
-
-        viz.images(x_spt[0], nrow=5, win='x_spt', opts=dict(title='x_spt'))
-        viz.images(x_qry[0], nrow=15, win='x_qry', opts=dict(title='x_qry'))
-        viz.text(str(y_spt[0]), win='y_spt', opts=dict(title='y_spt'))
-        viz.text(str(y_qry[0]), win='y_qry', opts=dict(title='y_qry'))
-
-
-        time.sleep(10)
 

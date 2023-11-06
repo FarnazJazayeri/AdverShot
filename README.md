@@ -84,4 +84,6 @@ This project focuses on addressing the research problems of adversarial robustne
 # main
 
 ## References
-- [List relevant references here]
+- https://github.com/orobix/Prototypical-Networks-for-Few-shot-Learning-PyTorch
+- https://github.com/dragen1860/MAML-Pytorch
+- https://github.com/wangren09/MetaAdv

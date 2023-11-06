@@ -5,10 +5,6 @@ import numpy as np
 
 
 class Learner(nn.Module):
-    """
-
-    """
-
     def __init__(self, config, imgc, imgsz):
         """
 
@@ -64,7 +60,7 @@ class Learner(nn.Module):
                 # must set requires_grad=False
                 running_mean = nn.Parameter(torch.zeros(param[0]), requires_grad=False)
                 running_var = nn.Parameter(torch.ones(param[0]), requires_grad=False)
-                self.vars_bn.extend([running_mean, running_var])
+                self.vars_bn.extend([running_mean, running_var]) ###########################
 
 
             elif name in ['tanh', 'relu', 'upsample', 'avg_pool2d', 'max_pool2d',
