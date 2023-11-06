@@ -1,9 +1,8 @@
-from    omniglot import Omniglot
-import  torchvision.transforms as transforms
-from    PIL import Image
-import  os.path
-import  numpy as np
-
+from omniglot import Omniglot
+import torchvision.transforms as transforms
+from PIL import Image
+import os.path
+import numpy as np
 
 class DataLoader:
 
