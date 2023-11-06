@@ -114,7 +114,7 @@ class DataLoader:
             x_spts, y_spts, y_cls_spts, x_qrys, y_qrys, y_cls_qrys = [], [], [], [], [], []
             for i in range(self.batchsz):  # one batch means one set
 
-                x_spt, y_spt, x_qry, y_qry = [], [], [], []
+                x_spt, y_spt, y_cls_spt, x_qry, y_qry, y_cls_qry = [], [], [], [], [], []
                 selected_cls = np.random.choice(data_pack.shape[0], self.n_way, False) # data_pack.shape[0] = 1200 (train), 423 (test)
 
                 for j, cur_class in enumerate(selected_cls):
@@ -123,11 +123,11 @@ class DataLoader:
 
                     # meta-training and meta-test
                     x_spt.append(data_pack[cur_class][selected_img[:self.k_shot]])
-                    x_qry.append(data_pack[cur_class][selected_img[self.k_shot:]])
+                    x_qry.append(data_pack[cur_class][selected_img[self.k_shot:self.k_shot + self.k_query]])
                     y_spt.append([j for _ in range(self.k_shot)]) ### 0 -> k-1
                     y_qry.append([j for _ in range(self.k_query)]) ### 0 -> k-1
-                    y_cls_spt.append([cur_class for _ in range(self.k_shot)]) ### 0 -> k-1
-                    y_cls_qry.append([cur_class for _ in range(self.k_query)]) ### 0 -> k-1
+                    y_cls_spt.append([cur_class for _ in range(self.k_shot)]) ### real classes
+                    y_cls_qry.append([cur_class for _ in range(self.k_query)]) ### real classes
 
                 # shuffle inside a batch
                 perm = np.random.permutation(self.n_way * self.k_shot)
