@@ -14,13 +14,12 @@ def conv_block(in_channels, out_channels):
     )
 
 
-class GnericProtoNet(nn.Module):
+class MAMLNet(nn.Module):
     '''
-    Model as described in the reference paper,
-    source: https://github.com/jakesnell/prototypical-networks/blob/f0c48808e496989d01db59f86d4449d7aee9ab0c/protonets/models/few_shot.py#L62-L84
+    MAML Model
     '''
-    def __init__(self, x_dim=1, hid_dim=64, z_dim=25):
-        super(GnericProtoNet, self).__init__()
+    def __init__(self, n_way, x_dim=1, hid_dim=64, z_dim=32):
+        super(MAMLNet, self).__init__()
         self.encoder = nn.Sequential(
             conv_block(x_dim, hid_dim),
             conv_block(hid_dim, hid_dim),
@@ -28,7 +27,15 @@ class GnericProtoNet(nn.Module):
             conv_block(hid_dim, z_dim),
         )
 
+        # Add fully connected layers after the feature extraction
+        self.fc_layers = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(z_dim * 4 * 4, 256),  # Adjust the input size based on your feature map size
+            nn.ReLU(),
+            nn.Linear(256, n_way),  # Output layer for classification
+        )
+
     def forward(self, x):
         x = self.encoder(x)
-        return x.view(x.size(0), -1)
-
+        x = self.fc_layers(x)
+        return x
