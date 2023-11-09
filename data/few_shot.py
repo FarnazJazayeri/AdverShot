@@ -10,6 +10,9 @@ class FewShotTaskDataset(Dataset):
         self.k_shot_spt = k_shot_spt
         self.k_shot_qry = k_shot_qry
         self.classes = self.generate_class_mapping()
+        self.min_num_samples_per_class = min([len(s) for s in self.classes])
+        if k_shot_spt + k_shot_qry > self.min_num_samples_per_class:
+            raise Exception(f"k_shot_spt + k_shot_qry should be less than or equal to {self.min_num_samples_per_class}")
 
     def generate_class_mapping(self):
         mapping = {}
