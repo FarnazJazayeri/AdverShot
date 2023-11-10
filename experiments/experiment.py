@@ -2,7 +2,7 @@ from data.dataloader import MyDataLoader
 from model.maml_net import MAMLNet
 from model.proto_net import GnericProtoNet
 from model.meta import Meta
-from tools.attacks.pgd import PGD
+from tools.attacks.white_box.pgd import PGD
 
 problem_params = dict(
     num_tasks=1000,
@@ -27,7 +27,7 @@ if __name__ == '__main__':
     )
     train_dl, validation_dl, test_dl = dl.load_few_shot_dataset('omniglot')
     learner = MAMLNet(n_way=problem_params['n_way'])
-    attacker = PGD(learner)
+    attacker = PGD()
 
     meta_learner = Meta(
         learner=learner,

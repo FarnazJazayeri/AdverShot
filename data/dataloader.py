@@ -40,11 +40,11 @@ class MyDataLoader:
         return omniglot_dataset
 
     def load_mini_imagenet(self):
-        # TODO
+        # TODO Load Mini Imagenet Dataset
         return None
 
     def load_cub(self):
-        # TODO
+        # TODO Load CUB Dataset
         return None
 
     def make_few_shot_task_dataloaders(self, dataset):

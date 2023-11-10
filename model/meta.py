@@ -6,7 +6,7 @@ from torch import optim
 import numpy as np
 
 from copy import deepcopy
-
+from collections import OrderedDict
 
 class Meta(nn.Module):
     """
@@ -99,7 +99,8 @@ class Meta(nn.Module):
         optimizer = torch.optim.SGD(self.learner.parameters(), lr=self.update_lr, momentum=0.9, weight_decay=5e-4)
 
         for i in range(batch_size):
-            fast_weights = deepcopy(list(self.learner.parameters()))
+            fast_weights = OrderedDict(self.learner.named_parameters())
+            # fast_weights = deepcopy(list(self.learner.named_parameters()))
             optimizer.zero_grad()
             loss_q, correct, loss_q_adv, correct_adv = self.evaluate_learner(
                 fast_weights=fast_weights,
@@ -112,11 +113,12 @@ class Meta(nn.Module):
             losses_q_adv[0] += loss_q_adv
             corrects_adv[0] = corrects_adv[0] + correct_adv
 
+            # TODO How to implement the meta-train procedure for MAML and Prototypical
             for k in range(1, self.update_step):
                 logits = self.learner(x_spt[i], fast_weights)
                 loss = F.cross_entropy(logits, y_spt[i])
-                grad = torch.autograd.grad(loss, fast_weights)
-                fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, fast_weights)))
+                grad = torch.autograd.grad(loss, list(fast_weights.values()))
+                fast_weights = OrderedDict(map(lambda p: (p[1][0], p[1][1] - self.update_lr * p[0]), zip(grad, fast_weights.items())))
 
                 optimizer.zero_grad()
                 loss_q, correct, loss_q_adv, correct_adv = self.evaluate_learner(
@@ -160,7 +162,7 @@ class Meta(nn.Module):
             loss = F.cross_entropy(logits_q, label)
 
             pred_q = F.softmax(logits_q, dim=1).argmax(dim=1)
-            correct = torch.eq(pred_q, data).sum().item()
+            correct = torch.eq(pred_q, label).sum().item()
 
             logits_q_adv = self.learner(adv_data, fast_weights)
             loss_adv = F.cross_entropy(logits_q_adv, label)

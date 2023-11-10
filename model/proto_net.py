@@ -20,6 +20,7 @@ class GnericProtoNet(nn.Module):
     source: https://github.com/jakesnell/prototypical-networks/blob/f0c48808e496989d01db59f86d4449d7aee9ab0c/protonets/models/few_shot.py#L62-L84
     '''
     def __init__(self, x_dim=1, hid_dim=64, z_dim=25):
+        # TODO build the structure of encoder
         super(GnericProtoNet, self).__init__()
         self.encoder = nn.Sequential(
             conv_block(x_dim, hid_dim),

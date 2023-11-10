@@ -1,10 +1,10 @@
 # coding=utf-8
 import torch
 from torch.nn import functional as F
-from torch.nn.modules import Module
+import torch.nn as nn
 
 
-class PrototypicalLoss(Module):
+class PrototypicalLoss(nn.Module):
     '''
     Loss class deriving from Module for the prototypical loss function defined below
     '''

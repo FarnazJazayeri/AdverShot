@@ -30,12 +30,15 @@ class MAMLNet(nn.Module):
         # Add fully connected layers after the feature extraction
         self.fc_layers = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(z_dim * 4 * 4, 256),  # Adjust the input size based on your feature map size
+            nn.Linear(z_dim, 256),  # Adjust the input size based on your feature map size
             nn.ReLU(),
             nn.Linear(256, n_way),  # Output layer for classification
         )
 
-    def forward(self, x):
+    def forward(self, x, params):
         x = self.encoder(x)
         x = self.fc_layers(x)
         return x
+
+    def save_state(self, state_dict):
+        self.saved_state = state_dict
