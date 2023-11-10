@@ -40,5 +40,50 @@ This project focuses on addressing the research problems of adversarial robustne
 - Utilized various experiments and averaged the results.
 - Analyzed the outcomes and prepared visualizations for better understanding.
 
+## Overall Implementation structure
+# data
+- dataloader 
+  - return x_spt, y_spt, x_qry, y_qry 
+  - x: Meta batck size (num_task) x N_way*K_shot x C x H x W
+  - y: Meta batck size (num_task) x N_way*K_shot
+    (1 common N_way for the support and querry sets)
+    (K_shot_sp, K_shot_querry)
+- omniglot
+- mini-imagenet
+- cub
+
+# model
+- meta_learner: can be implemented with any models like protonet used for maml
+- protonet
+- proposednet
+
+# tools
+- attacks
+  - fgsm (white-box)
+  - pgd (white-box)
+  - pixle (black-box)
+- defense
+- losses
+- train
+- test
+
+# experiments
+- omniglot
+  - meta_learner
+  - protonet
+  - proposednet
+- mini-imagenet
+  - meta_learner
+  - protonet
+  - proposednet
+- cub
+  - meta_learner
+  - protonet
+  - proposednet
+
+# main
+
 ## References
-- [List relevant references here]
+- https://github.com/orobix/Prototypical-Networks-for-Few-shot-Learning-PyTorch
+- https://github.com/dragen1860/MAML-Pytorch
+- https://github.com/wangren09/MetaAdv
