@@ -1,0 +1,2 @@
+All hps: 2023-07-11 19:24:03 model=pt_resnet dataset=mnist attack=square_linf n_ex=10000 eps=0.05 p=0.05 n_iter=10000
+Clean accuracy: 0.00%

@@ -1,0 +1,3 @@
+All hps: 2023-07-11 19:28:20 model=pt_resnet dataset=mnist attack=square_l2 n_ex=10000 eps=0.05 p=0.05 n_iter=10000
+Clean accuracy: 0.00%
+Initial square side=5 for bumps

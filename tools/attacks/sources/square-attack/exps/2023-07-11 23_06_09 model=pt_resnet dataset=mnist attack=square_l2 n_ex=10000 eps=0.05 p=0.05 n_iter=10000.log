@@ -1,0 +1,34 @@
+All hps: 2023-07-11 23:06:09 model=pt_resnet dataset=mnist attack=square_l2 n_ex=10000 eps=0.05 p=0.05 n_iter=10000
+Clean accuracy: 8.62%
+Initial square side=5 for bumps
+1: acc=8.48% acc_corr=98.38% avg#q_ae=1.0 med#q_ae=1.0 s=6->7, n_ex=862, 0s, loss=2.305, max_pert=0.1, impr=273
+2: acc=8.28% acc_corr=96.06% avg#q_ae=2.2 med#q_ae=3.0 s=6->7, n_ex=862, 0s, loss=2.194, max_pert=0.0, impr=706
+3: acc=8.28% acc_corr=96.06% avg#q_ae=2.2 med#q_ae=3.0 s=6->7, n_ex=862, 0s, loss=2.190, max_pert=0.1, impr=299
+4: acc=8.26% acc_corr=95.82% avg#q_ae=2.3 med#q_ae=3.0 s=6->7, n_ex=862, 0s, loss=2.183, max_pert=0.1, impr=390
+5: acc=8.26% acc_corr=95.82% avg#q_ae=2.3 med#q_ae=3.0 s=6->7, n_ex=862, 0s, loss=2.179, max_pert=0.1, impr=276
+6: acc=8.26% acc_corr=95.82% avg#q_ae=2.3 med#q_ae=3.0 s=6->7, n_ex=862, 0s, loss=2.174, max_pert=0.1, impr=403
+7: acc=8.25% acc_corr=95.71% avg#q_ae=2.5 med#q_ae=3.0 s=6->7, n_ex=862, 0s, loss=2.169, max_pert=0.0, impr=312
+8: acc=8.25% acc_corr=95.71% avg#q_ae=2.5 med#q_ae=3.0 s=6->7, n_ex=862, 0s, loss=2.163, max_pert=0.0, impr=179
+9: acc=8.24% acc_corr=95.59% avg#q_ae=2.7 med#q_ae=3.0 s=6->7, n_ex=862, 0s, loss=2.161, max_pert=0.0, impr=89
+10: acc=8.21% acc_corr=95.24% avg#q_ae=3.3 med#q_ae=3.0 s=6->7, n_ex=862, 0s, loss=2.158, max_pert=0.1, impr=338
+11: acc=8.20% acc_corr=95.13% avg#q_ae=3.5 med#q_ae=3.0 s=6->7, n_ex=862, 0s, loss=2.151, max_pert=0.1, impr=404
+12: acc=8.19% acc_corr=95.01% avg#q_ae=3.7 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.149, max_pert=0.1, impr=327
+13: acc=8.17% acc_corr=94.78% avg#q_ae=4.2 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.146, max_pert=0.1, impr=340
+14: acc=8.17% acc_corr=94.78% avg#q_ae=4.2 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.142, max_pert=0.1, impr=415
+15: acc=8.17% acc_corr=94.78% avg#q_ae=4.2 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.140, max_pert=0.1, impr=285
+16: acc=8.16% acc_corr=94.66% avg#q_ae=4.5 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.136, max_pert=0.1, impr=413
+17: acc=8.15% acc_corr=94.55% avg#q_ae=4.7 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.134, max_pert=0.1, impr=318
+18: acc=8.15% acc_corr=94.55% avg#q_ae=4.7 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.132, max_pert=0.1, impr=323
+19: acc=8.14% acc_corr=94.43% avg#q_ae=5.1 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.126, max_pert=0.0, impr=351
+20: acc=8.14% acc_corr=94.43% avg#q_ae=5.1 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.124, max_pert=0.1, impr=267
+21: acc=8.12% acc_corr=94.20% avg#q_ae=5.7 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.111, max_pert=0.0, impr=301
+22: acc=8.12% acc_corr=94.20% avg#q_ae=5.7 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.106, max_pert=0.1, impr=329
+23: acc=8.11% acc_corr=94.08% avg#q_ae=6.1 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.104, max_pert=0.1, impr=254
+24: acc=8.10% acc_corr=93.97% avg#q_ae=6.5 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.102, max_pert=0.1, impr=327
+25: acc=8.07% acc_corr=93.62% avg#q_ae=7.5 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.099, max_pert=0.1, impr=267
+26: acc=8.05% acc_corr=93.39% avg#q_ae=8.2 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.095, max_pert=0.1, impr=301
+27: acc=8.05% acc_corr=93.39% avg#q_ae=8.2 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.093, max_pert=0.1, impr=312
+28: acc=8.05% acc_corr=93.39% avg#q_ae=8.2 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.087, max_pert=0.1, impr=385
+29: acc=8.05% acc_corr=93.39% avg#q_ae=8.2 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.080, max_pert=0.1, impr=420
+30: acc=8.04% acc_corr=93.27% avg#q_ae=8.6 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.078, max_pert=0.0, impr=183
+31: acc=8.04% acc_corr=93.27% avg#q_ae=8.6 med#q_ae=3.0 s=6->5, n_ex=862, 1s, loss=2.076, max_pert=0.1, impr=195
