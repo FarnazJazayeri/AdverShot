@@ -1,10 +1,15 @@
 # coding=utf-8
 import torch
+from numpy import dtype
+from torch import optim
 from torch.nn import functional as F
-from torch.nn.modules import Module
+import torch.nn as nn
+import numpy as np
+
+from learner import Learner
 
 
-class PrototypicalLoss(Module):
+class PrototypicalLoss(nn.Module):
     '''
     Loss class deriving from Module for the prototypical loss function defined below
     '''
@@ -56,6 +61,9 @@ def prototypical_loss(out_spt, y_spt, out_qry, y_qry):
     # input_cpu = input.to('cpu')
     out_spt_cpu, y_spt_cpu, out_qry_cpu, y_qry_cpu = out_spt.to('cpu'), y_spt.to('cpu'), out_qry.to('cpu'), y_qry.to('cpu')
 
+    n_classes = len(set(y_spt.tolist()))
+    n_query = out_qry.size()[0]
+
     # def supp_idxs(c):
     # FIXME when torch will support where as np
     #    return target_cpu.eq(c).nonzero()[:n_support].squeeze(1)
@@ -69,7 +77,14 @@ def prototypical_loss(out_spt, y_spt, out_qry, y_qry):
     # support_idxs = list(map(supp_idxs, classes))
 
     # prototypes = torch.stack([input_cpu[idx_list].mean(0) for idx_list in support_idxs])
-    prototypes = torch.stack([out_spt_cpu[i].mean(0) for i in range(out_spt_cpu.size(0))])
+
+    prototypes = []
+    for c in range(n_classes):
+        sample_class_i_idx = torch.IntTensor([i for i,v in enumerate(y_spt_cpu.tolist()) if v == c])
+        sample_class_i = out_spt_cpu.index_select(dim=0, index=sample_class_i_idx)
+        prototypes.append(sample_class_i.mean(dim=0))
+
+    prototypes = torch.stack(prototypes, dim=0)
 
     # FIXME when torch will support where as np
     # query_idxs = torch.stack(list(map(lambda c: target_cpu.eq(c).nonzero()[n_support:], classes))).view(-1)
@@ -77,16 +92,12 @@ def prototypical_loss(out_spt, y_spt, out_qry, y_qry):
 
     # dists = euclidean_dist(query_samples, prototypes)
     dists = euclidean_dist(out_qry_cpu, prototypes)
+    criterion = nn.CrossEntropyLoss().to('cpu')
+    log_p_y = F.log_softmax(-dists, dim=1).view(n_query, n_classes)
+    loss_val = criterion(log_p_y, y_qry_cpu)
+    y_hat = torch.argmax(log_p_y, 1)
 
-    log_p_y = F.log_softmax(-dists, dim=1).view(n_classes, n_query, -1)
-
-    target_inds = torch.arange(0, n_classes)
-    target_inds = target_inds.view(n_classes, 1, 1)
-    target_inds = target_inds.expand(n_classes, n_query, 1).long()
-
-    loss_val = -log_p_y.gather(2, target_inds).squeeze().view(-1).mean()
-    _, y_hat = log_p_y.max(2)
-    acc_val = y_hat.eq(target_inds.squeeze(2)).float().mean()
+    acc_val = y_hat.eq(y_qry_cpu).float().mean()
 
     return loss_val, acc_val
 
@@ -161,7 +172,7 @@ class Meta(nn.Module):
             out_qry = self.net(x_qry[i], self.net.parameters(), bn_training=True)
             # loss, acc = loss_fn(model_output, target=y,
             #                    n_support=opt.num_support_tr)
-            loss, acc = loss_fn(out_spt, y_spt[i], out_qry, y_qry[i])
+            loss, acc = prototypical_loss(out_spt, y_spt[i], out_qry, y_qry[i])
             loss_q += loss
             correct_q += acc
             loss.backward()
@@ -171,4 +182,74 @@ class Meta(nn.Module):
         loss_q /= task_num
         correct_q /= task_num
 
-        return
+        return loss_q, correct_q
+
+    def test(self, x_spt, y_spt, x_qry, y_qry):
+        """
+
+        :param x_spt:   [setsz, c_, h, w]
+        :param y_spt:   [setsz]
+        :param x_qry:   [querysz, c_, h, w]
+        :param y_qry:   [querysz]
+        :return:
+        """
+        assert len(x_spt.shape) == 4
+
+        querysz = x_qry.size(0)
+
+        corrects = [0 for _ in range(self.update_step_test + 1)]
+
+        # in order to not ruin the state of running_mean/variance and bn_weight/bias
+        # we finetunning on the copied model instead of self.net
+        net = deepcopy(self.net)
+
+        # 1. run the i-th task and compute loss for k=0
+        logits = net(x_spt)
+        loss = F.cross_entropy(logits, y_spt)
+        grad = torch.autograd.grad(loss, net.parameters())
+        fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, net.parameters())))
+
+        # this is the loss and accuracy before first update
+        with torch.no_grad():
+            # [setsz, nway]
+            logits_q = net(x_qry, net.parameters(), bn_training=True)
+            # [setsz]
+            pred_q = F.softmax(logits_q, dim=1).argmax(dim=1)
+            # scalar
+            correct = torch.eq(pred_q, y_qry).sum().item()
+            corrects[0] = corrects[0] + correct
+
+        # this is the loss and accuracy after the first update
+        with torch.no_grad():
+            # [setsz, nway]
+            logits_q = net(x_qry, fast_weights, bn_training=True)
+            # [setsz]
+            pred_q = F.softmax(logits_q, dim=1).argmax(dim=1)
+            # scalar
+            correct = torch.eq(pred_q, y_qry).sum().item()
+            corrects[1] = corrects[1] + correct
+
+        for k in range(1, self.update_step_test):
+            # 1. run the i-th task and compute loss for k=1~K-1
+            logits = net(x_spt, fast_weights, bn_training=True)
+            loss = F.cross_entropy(logits, y_spt)
+            # 2. compute grad on theta_pi
+            grad = torch.autograd.grad(loss, fast_weights)
+            # 3. theta_pi = theta_pi - train_lr * grad
+            fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, fast_weights)))
+
+            logits_q = net(x_qry, fast_weights, bn_training=True)
+            # loss_q will be overwritten and just keep the loss_q on last update step.
+            loss_q = F.cross_entropy(logits_q, y_qry)
+
+            with torch.no_grad():
+                pred_q = F.softmax(logits_q, dim=1).argmax(dim=1)
+                correct = torch.eq(pred_q, y_qry).sum().item()  # convert to numpy
+                corrects[k + 1] = corrects[k + 1] + correct
+
+
+        del net
+
+        accs = np.array(corrects) / querysz
+
+        return accs

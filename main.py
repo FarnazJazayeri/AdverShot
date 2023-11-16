@@ -59,6 +59,7 @@ def main(args):
             ('flatten', []),
             ('linear', [64, 64])
         ]
+        model = Meta(args, config).to(device)
 
     tmp = filter(lambda x: x.requires_grad, model.parameters())
     num = sum(map(lambda x: np.prod(x.shape), tmp))
@@ -173,8 +174,8 @@ if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--epoch', type=int, help='epoch number', default=1000)
     argparser.add_argument('--n_way', type=int, help='n way', default=5)
-    argparser.add_argument('--k_spt', type=int, help='k shot for support set', default=1)
-    argparser.add_argument('--k_qry', type=int, help='k shot for query set', default=5)
+    argparser.add_argument('--k_spt', type=int, help='k shot for support set', default=5)
+    argparser.add_argument('--k_qry', type=int, help='k shot for query set', default=2)
     argparser.add_argument('--imgsz', type=int, help='imgsz', default=28)
     argparser.add_argument('--imgc', type=int, help='imgc', default=1)
     argparser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=32)
@@ -186,7 +187,7 @@ if __name__ == '__main__':
     argparser.add_argument('--mode', type=str, help='The learning phase', default="train")
     argparser.add_argument('--weight', type=str, help='The learning phase', default="/home/qle/Project/MetaLearning_FewShotLearning/source/MAML-Pytorch/experiments/omniglot/generic_metanet/2023-11-15_18-48-06/checkpoints/best_new.pt")
     argparser.add_argument('--data_name', type=str, help='The data configuration', default="omniglot")
-    argparser.add_argument('--model_name', type=str, help='The model name', default="metanet_maml_at")  # "generic_protonet"  "generic_metanet" "metanet_maml_at"
+    argparser.add_argument('--model_name', type=str, help='The model name', default="generic_protonet")  # "generic_protonet"  "generic_metanet" "metanet_maml_at"
     ## Adversarial attack
     argparser.add_argument('--adv_attack_type', type=str, default="white_box", help="The adversarial attack type")  # white_box, black_box
     argparser.add_argument('--adv_attack', type=str, default="LinfPGD", help="The adversarial attack")  ### LinfPGD FGSM
