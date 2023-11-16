@@ -59,7 +59,7 @@ class PGD(AttackBase):
     # _mean = torch.tensor(np.array([0]).astype(np.float32)[np.newaxis, :, np.newaxis, np.newaxis])
     # _std = torch.tensor(np.array([1.0]).astype(np.float32)[np.newaxis, :, np.newaxis, np.newaxis])
     def __init__(self, eps=6 / 255.0, sigma=3 / 255.0, nb_iter=20,
-                 norm=np.inf, DEVICE=torch.device('cpu'),
+                 norm=np.inf, DEVICE=torch.device('cuda:0'),
                  mean=torch.tensor(np.array([0]).astype(np.float32)[np.newaxis, :, np.newaxis, np.newaxis]),
                  std=torch.tensor(np.array([1.0]).astype(np.float32)[np.newaxis, :, np.newaxis, np.newaxis]),
                  random_start=True):

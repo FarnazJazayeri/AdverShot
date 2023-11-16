@@ -8,12 +8,14 @@ import numpy as np
 from copy import deepcopy
 from collections import OrderedDict
 
+
 class Meta(nn.Module):
     """
     Meta Learner
     """
 
-    def __init__(self, learner, update_lr, meta_lr, adv_reg_param, update_steps, update_steps_test, attacker=None):
+    def __init__(self, learner, update_lr, meta_lr, adv_reg_param, update_steps, update_steps_test, device,
+                 attacker=None, ):
         """
         :param learner: The few-shot learner model
         :param update_lr: Learning rate for few-shot learner
@@ -31,6 +33,7 @@ class Meta(nn.Module):
         self.update_step_test = update_steps_test
         self.attacker = attacker
         self.meta_optim = optim.Adam(self.learner.parameters(), lr=self.meta_lr)
+        self.device = device
 
     def clip_grad_by_norm_(self, grad, max_norm):
         """
@@ -89,6 +92,8 @@ class Meta(nn.Module):
         x_qry = torch.stack(x_qry, dim=1)
         y_qry = torch.stack(y_qry, dim=1)
 
+        x_spt, y_spt, x_qry, y_qry = x_spt.to(self.device), y_spt.to(self.device), x_qry.to(self.device), y_qry.to(
+            self.device)
         batch_size, spt_size, c_, h, w = x_spt.size()
         qry_size = x_qry.size()[1]
 
@@ -100,7 +105,7 @@ class Meta(nn.Module):
         optimizer = torch.optim.SGD(self.learner.parameters(), lr=self.update_lr, momentum=0.9, weight_decay=5e-4)
 
         for i in range(batch_size):
-            fast_weights = OrderedDict(self.learner.named_parameters())
+            fast_weights = list(self.learner.parameters())
             # fast_weights = deepcopy(list(self.learner.named_parameters()))
             optimizer.zero_grad()
             loss_q, correct, loss_q_adv, correct_adv = self.evaluate_learner(
@@ -119,8 +124,8 @@ class Meta(nn.Module):
             for k in range(1, self.update_step):
                 logits = self.learner(x_spt[i], fast_weights)
                 loss = F.cross_entropy(logits, y_spt[i])
-                grad = torch.autograd.grad(loss, list(fast_weights.values()))
-                fast_weights = OrderedDict(map(lambda p: (p[1][0], p[1][1] - self.update_lr * p[0]), zip(grad, fast_weights.items())))
+                grad = torch.autograd.grad(loss, fast_weights)
+                fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, fast_weights)))
 
                 optimizer.zero_grad()
                 loss_q, correct, loss_q_adv, correct_adv = self.evaluate_learner(
