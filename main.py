@@ -3,7 +3,6 @@ import numpy as np
 from omniglotNShot import OmniglotNShot
 import argparse
 import datetime
-from meta import Meta
 import datetime
 
 
@@ -17,11 +16,13 @@ def main(args):
 
     ### Model config
     if args.model_name == "generic_metanet":
-        from meta import Meta
+        from meta_maml import Meta
     elif args.model_name == "metanet_maml_at":
-        from meta_adv import Meta
+        from meta_maml_at import Meta
     elif args.model_name == "generic_protonet":
         from meta_proto import Meta
+    elif args.model_name == "protonet_at":
+        from meta_proto_at import Meta
 
     ### 1) Model
     if args.model_name == "generic_metanet" or args.model_name == "metanet_maml_at":
@@ -42,7 +43,7 @@ def main(args):
             ('linear', [args.n_way, 64])
         ]
         model = Meta(args, config).to(device)
-    elif args.model_name == "generic_protonet":
+    elif args.model_name == "generic_protonet" or args.model_name == "protonet_at":
         config = [
             ('conv2d', [64, 1, 3, 3, 2, 0]),
             ('relu', [True]),
@@ -123,11 +124,14 @@ def main(args):
                     # split to single task each time
                     for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(x_spt, y_spt, x_qry, y_qry):
                         if args.model_name == "metanet_maml_at":
-                            test_acc, accs_adv, accs_adv_prior = model.finetunning(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
+                            test_acc, accs_adv, accs_adv_prior = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                         else:
                             test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                         accs.append(test_acc)
-                        acc_test += test_acc[-1]
+                        if args.model_name == "protonet_at" or args.model_name == "generic_protonet":
+                            acc_test += test_acc
+                        else:
+                            acc_test += test_acc[-1]
                     acc_test /= (1000 // args.task_num)
                 # [b, update_step+1]
 
@@ -159,6 +163,10 @@ def main(args):
             x_spt, y_spt, x_qry, y_qry = torch.from_numpy(x_spt).to(device), torch.from_numpy(y_spt).to(device), \
                 torch.from_numpy(x_qry).to(device), torch.from_numpy(y_qry).to(device)
 
+            if args.adv_attack == "LinfPGD":
+                x_qry = at.attack(self.net, self.net.parameters(), x_qry, y_qry)
+                x_spt = at.attack(self.net, self.net.parameters(), x_spt, y_spt)
+
             # split to single task each time
             for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(x_spt, y_spt, x_qry, y_qry):
                 test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
@@ -174,8 +182,8 @@ if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--epoch', type=int, help='epoch number', default=1000)
     argparser.add_argument('--n_way', type=int, help='n way', default=5)
-    argparser.add_argument('--k_spt', type=int, help='k shot for support set', default=5)
-    argparser.add_argument('--k_qry', type=int, help='k shot for query set', default=2)
+    argparser.add_argument('--k_spt', type=int, help='k shot for support set', default=1)
+    argparser.add_argument('--k_qry', type=int, help='k shot for query set', default=5)
     argparser.add_argument('--imgsz', type=int, help='imgsz', default=28)
     argparser.add_argument('--imgc', type=int, help='imgc', default=1)
     argparser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=32)
@@ -187,10 +195,10 @@ if __name__ == '__main__':
     argparser.add_argument('--mode', type=str, help='The learning phase', default="train")
     argparser.add_argument('--weight', type=str, help='The learning phase', default="/home/qle/Project/MetaLearning_FewShotLearning/source/MAML-Pytorch/experiments/omniglot/generic_metanet/2023-11-15_18-48-06/checkpoints/best_new.pt")
     argparser.add_argument('--data_name', type=str, help='The data configuration', default="omniglot")
-    argparser.add_argument('--model_name', type=str, help='The model name', default="generic_protonet")  # "generic_protonet"  "generic_metanet" "metanet_maml_at"
+    argparser.add_argument('--model_name', type=str, help='The model name', default="generic_protonet")  # "generic_protonet"  "generic_metanet" "metanet_maml_at" "protonet_at"
     ## Adversarial attack
     argparser.add_argument('--adv_attack_type', type=str, default="white_box", help="The adversarial attack type")  # white_box, black_box
-    argparser.add_argument('--adv_attack', type=str, default="LinfPGD", help="The adversarial attack")  ### LinfPGD FGSM
+    argparser.add_argument('--adv_attack', type=str, default="LinfPGD", help="The adversarial attack")  ### None LinfPGD FGSM
     argparser.add_argument('--adv_attack_eps', type=float, default=16 / 255, help="The adversarial attack pertuabation level value")  # 8/255 16/255 32/255 64/255 128/255 1
     argparser.add_argument('--adv_attack_alpha', type=float, default=4 / 255, help="The adversarial attack step size value")  # 4/255 16/255 32/255 64/255 128/255 1
     argparser.add_argument('--adv_attack_iters', type=float, default=7, help="The adversarial attack number of iterations value")  # 7 9 11 13 17 19
