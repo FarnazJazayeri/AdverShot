@@ -63,6 +63,7 @@ class Meta(nn.Module):
         :return:
         """
         for epoch in range(num_epochs):
+            # OUTER LOOP
             for i, (x_spt, y_spt, x_qry, y_qry) in enumerate(train_dl):
                 meta_loss, losses_q, losses_q_adv, accs, accs_adv = self.forward(x_spt, y_spt, x_qry, y_qry)
                 self.meta_optim.zero_grad()
@@ -114,6 +115,7 @@ class Meta(nn.Module):
             corrects_adv[0] = corrects_adv[0] + correct_adv
 
             # TODO How to implement the meta-train procedure for MAML and Prototypical
+            # INNER LOOP
             for k in range(1, self.update_step):
                 logits = self.learner(x_spt[i], fast_weights)
                 loss = F.cross_entropy(logits, y_spt[i])

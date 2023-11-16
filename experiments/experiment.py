@@ -5,7 +5,7 @@ from model.meta import Meta
 from tools.attacks.white_box.pgd import PGD
 
 problem_params = dict(
-    num_tasks=1000,
+    num_tasks=50,
     n_way=5,
     k_shot_spt=5,
     k_shot_qry=1,
