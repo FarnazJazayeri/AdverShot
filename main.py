@@ -97,6 +97,8 @@ def main(args):
             # set traning=True to update running_mean, running_variance, bn_weights, bn_bias
             if args.model_name == "metanet_maml_at":
                 accs, accs_adv = model(x_spt, y_spt, x_qry, y_qry)
+            elif args.model_name == "generic_protonet" or args.model_name == "protonet_at":
+                loss, accs = model(x_spt, y_spt, x_qry, y_qry)
             else:
                 accs = model(x_spt, y_spt, x_qry, y_qry)
 
@@ -115,41 +117,41 @@ def main(args):
             if step % 100 == 0:
                 torch.save(model.state_dict(), f'{store_dir}/checkpoints/last.pt')
                 accs = []
-                for _ in range(1000 // args.task_num):
+                for _ in range(100):
                     # test
                     x_spt, y_spt, x_qry, y_qry = db_train.next('test')
                     x_spt, y_spt, x_qry, y_qry = torch.from_numpy(x_spt).to(device), torch.from_numpy(y_spt).to(device), \
                         torch.from_numpy(x_qry).to(device), torch.from_numpy(y_qry).to(device)
-
+                    # print("------------------------", x_spt.shape) # torch.Size([32, 5, 1, 28, 28])
                     # split to single task each time
                     for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(x_spt, y_spt, x_qry, y_qry):
+                        # print("------------------------", x_spt_one.shape) # torch.Size([5, 1, 28, 28])
                         if args.model_name == "metanet_maml_at":
                             test_acc, accs_adv, accs_adv_prior = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                         else:
-                            test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
+                            test_loss, test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                         accs.append(test_acc)
                         if args.model_name == "protonet_at" or args.model_name == "generic_protonet":
                             acc_test += test_acc
                         else:
                             acc_test += test_acc[-1]
-                    acc_test /= (1000 // args.task_num)
+                    acc_test /= args.task_num
                 # [b, update_step+1]
 
-                # deep copy the model
                 # print(type(accs), accs)
                 if acc_test >= acc_best:
                     acc_best = acc_test
                     print("Save best weights !!!")
                     torch.save(model.state_dict(), f'{store_dir}/checkpoints/best_new.pt')
-                acc_test = 0.0
-                accs = np.array(accs).mean(axis=0).astype(np.float16)
-                print('Epoch: {} Testing Acc: {}, Best Acc: {} \n'.format(step, accs, acc_best))
+                    # accs = np.array(accs).mean(axis=0).astype(np.float16)
+                print('Epoch: {} Testing Acc: {}, Best Acc: {} \n'.format(step, acc_test, acc_best))
                 with open(f'{store_dir}/results.txt', 'a') as f:
-                    f.writelines('Epoch: {} Testing Acc: {}, Best Acc: {} \n'.format(step, accs, acc_best))
+                    f.writelines('Epoch: {} Testing Acc: {}, Best Acc: {} \n'.format(step, acc_test, acc_best))
                     f.close()
+                acc_test = 0.0
     else:
         #### Testing ####
-        model.load_state_dict(torch.load(args.weight))
+        model.load_state_dict(torch.load(args.weight))  ####################### load the best weight ##########################
         if args.adv_attack == "LinfPGD":
             from attack import PGD
             at = PGD(eps=args.adv_attack_eps, sigma=args.adv_attack_alpha, nb_iter=args.adv_attack_iters)
@@ -157,7 +159,7 @@ def main(args):
             at = None
         accs = []
         acc_test = 0.0
-        for i in range(1000 // args.task_num):
+        for i in range(100):
             # test
             x_spt, y_spt, x_qry, y_qry = db_train.next('test')
             x_spt, y_spt, x_qry, y_qry = torch.from_numpy(x_spt).to(device), torch.from_numpy(y_spt).to(device), \
@@ -172,7 +174,7 @@ def main(args):
                 test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                 accs.append(test_acc)
                 acc_test += test_acc[-1]
-            acc_test /= (1000 // args.task_num)
+            acc_test /= args.task_num
             print(f"Epoch: {i}, test acc: {acc_test}")
             with open(f"{os.path.dirname(args.weight)}/results_test.txt", 'a') as f:
                 f.writelines(f"Epoch: {i}, test acc: {acc_test}")
@@ -195,10 +197,10 @@ if __name__ == '__main__':
     argparser.add_argument('--mode', type=str, help='The learning phase', default="train")
     argparser.add_argument('--weight', type=str, help='The learning phase', default="/home/qle/Project/MetaLearning_FewShotLearning/source/MAML-Pytorch/experiments/omniglot/generic_metanet/2023-11-15_18-48-06/checkpoints/best_new.pt")
     argparser.add_argument('--data_name', type=str, help='The data configuration', default="omniglot")
-    argparser.add_argument('--model_name', type=str, help='The model name', default="generic_protonet")  # "generic_protonet"  "generic_metanet" "metanet_maml_at" "protonet_at"
+    argparser.add_argument('--model_name', type=str, help='The model name', default="generic_protonet")  # "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
     ## Adversarial attack
     argparser.add_argument('--adv_attack_type', type=str, default="white_box", help="The adversarial attack type")  # white_box, black_box
-    argparser.add_argument('--adv_attack', type=str, default="LinfPGD", help="The adversarial attack")  ### None LinfPGD FGSM
+    argparser.add_argument('--adv_attack', type=str, default=None, help="The adversarial attack")  ### None LinfPGD FGSM
     argparser.add_argument('--adv_attack_eps', type=float, default=16 / 255, help="The adversarial attack pertuabation level value")  # 8/255 16/255 32/255 64/255 128/255 1
     argparser.add_argument('--adv_attack_alpha', type=float, default=4 / 255, help="The adversarial attack step size value")  # 4/255 16/255 32/255 64/255 128/255 1
     argparser.add_argument('--adv_attack_iters', type=float, default=7, help="The adversarial attack number of iterations value")  # 7 9 11 13 17 19
