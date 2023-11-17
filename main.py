@@ -159,25 +159,30 @@ def main(args):
             at = None
         accs = []
         acc_test = 0.0
+        acc_test_avg = 0.0
         for i in range(100):
             # test
             x_spt, y_spt, x_qry, y_qry = db_train.next('test')
             x_spt, y_spt, x_qry, y_qry = torch.from_numpy(x_spt).to(device), torch.from_numpy(y_spt).to(device), \
                 torch.from_numpy(x_qry).to(device), torch.from_numpy(y_qry).to(device)
 
-            if args.adv_attack == "LinfPGD":
-                x_qry = at.attack(self.net, self.net.parameters(), x_qry, y_qry)
-                x_spt = at.attack(self.net, self.net.parameters(), x_spt, y_spt)
-
             # split to single task each time
             for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(x_spt, y_spt, x_qry, y_qry):
+                if args.adv_attack == "LinfPGD":
+                    x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one)
+                    x_spt_one = at.attack(model.net, model.net.parameters(), x_spt_one, y_spt_one)
                 test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                 accs.append(test_acc)
                 acc_test += test_acc[-1]
             acc_test /= args.task_num
+            acc_test_avg += acc_test
             print(f"Epoch: {i}, test acc: {acc_test}")
             with open(f"{os.path.dirname(args.weight)}/results_test.txt", 'a') as f:
-                f.writelines(f"Epoch: {i}, test acc: {acc_test}")
+                f.writelines(f"Epoch: {i}, test acc: {acc_test} \n")
+        acc_test_avg /= 100
+        print(f"Test acc avg: {acc_test_avg}")
+        with open(f"{os.path.dirname(args.weight)}/results_test.txt", 'a') as f:
+            f.writelines(f"Test acc avg: {acc_test_avg}")
 
 
 if __name__ == '__main__':
@@ -194,14 +199,14 @@ if __name__ == '__main__':
     argparser.add_argument('--update_step', type=int, help='task-level inner update steps', default=5)
     argparser.add_argument('--update_step_test', type=int, help='update steps for finetunning', default=10)
     ###
-    argparser.add_argument('--mode', type=str, help='The learning phase', default="train")
+    argparser.add_argument('--mode', type=str, help='The learning phase', default="test")  # train test
     argparser.add_argument('--weight', type=str, help='The learning phase', default="/home/qle/Project/MetaLearning_FewShotLearning/source/MAML-Pytorch/experiments/omniglot/generic_metanet/2023-11-15_18-48-06/checkpoints/best_new.pt")
     argparser.add_argument('--data_name', type=str, help='The data configuration', default="omniglot")
-    argparser.add_argument('--model_name', type=str, help='The model name', default="generic_protonet")  # "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
+    argparser.add_argument('--model_name', type=str, help='The model name', default="generic_metanet")  # "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
     ## Adversarial attack
     argparser.add_argument('--adv_attack_type', type=str, default="white_box", help="The adversarial attack type")  # white_box, black_box
-    argparser.add_argument('--adv_attack', type=str, default=None, help="The adversarial attack")  ### None LinfPGD FGSM
-    argparser.add_argument('--adv_attack_eps', type=float, default=16 / 255, help="The adversarial attack pertuabation level value")  # 8/255 16/255 32/255 64/255 128/255 1
+    argparser.add_argument('--adv_attack', type=str, default="LinfPGD", help="The adversarial attack")  ### None LinfPGD FGSM
+    argparser.add_argument('--adv_attack_eps', type=float, default=8 / 255, help="The adversarial attack pertuabation level value")  # 8/255 16/255 32/255 64/255 128/255 1
     argparser.add_argument('--adv_attack_alpha', type=float, default=4 / 255, help="The adversarial attack step size value")  # 4/255 16/255 32/255 64/255 128/255 1
     argparser.add_argument('--adv_attack_iters', type=float, default=7, help="The adversarial attack number of iterations value")  # 7 9 11 13 17 19
     argparser.add_argument('--adv_defense', type=str, default=None, help="The adversarial defense")  ### None AT  TRADES
