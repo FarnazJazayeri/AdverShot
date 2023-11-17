@@ -128,6 +128,8 @@ def main(args):
                         # print("------------------------", x_spt_one.shape) # torch.Size([5, 1, 28, 28])
                         if args.model_name == "metanet_maml_at":
                             test_acc, accs_adv, accs_adv_prior = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
+                        elif args.model_name == "generic_metanet":
+                            test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                         else:
                             test_loss, test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                         accs.append(test_acc)
@@ -176,6 +178,8 @@ def main(args):
 
                 if args.model_name == "metanet_maml_at":
                     test_acc, accs_adv, accs_adv_prior = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
+                elif args.model_name == "generic_metanet":
+                    test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                 else:
                     test_loss, test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                 accs.append(test_acc)
@@ -211,12 +215,12 @@ if __name__ == '__main__':
     argparser.add_argument('--update_step_test', type=int, help='update steps for finetunning', default=10)
     ###
     argparser.add_argument('--mode', type=str, help='The learning phase', default="test")  # train test
-    argparser.add_argument('--weight', type=str, help='The learning phase', default="/home/qle/Project/MetaLearning_FewShotLearning/source/MAML-Pytorch/experiments/omniglot/generic_protonet/2023-11-16_19-49-56/checkpoints/best_new.pt")
+    argparser.add_argument('--weight', type=str, help='The learning phase', default="/home/qle/Project/MetaLearning_FewShotLearning/source/MAML-Pytorch/experiments/omniglot/generic_metanet/2023-11-15_18-48-06/checkpoints/best_new.pt")
     argparser.add_argument('--data_name', type=str, help='The data configuration', default="omniglot")
-    argparser.add_argument('--model_name', type=str, help='The model name', default="generic_protonet")  # "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
+    argparser.add_argument('--model_name', type=str, help='The model name', default="generic_metanet")  # "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
     ## Adversarial attack
     argparser.add_argument('--adv_attack_type', type=str, default="white_box", help="The adversarial attack type")  # white_box, black_box
-    argparser.add_argument('--adv_attack', type=str, default="LinfPGD", help="The adversarial attack")  ### None LinfPGD FGSM
+    argparser.add_argument('--adv_attack', type=str, default=None, help="The adversarial attack")  ### None LinfPGD FGSM
     argparser.add_argument('--adv_attack_eps', type=float, default=16 / 255, help="The adversarial attack pertuabation level value")  # 8/255 16/255 32/255 64/255 128/255 1
     argparser.add_argument('--adv_attack_alpha', type=float, default=4 / 255, help="The adversarial attack step size value")  # 4/255 16/255 32/255 64/255 128/255 1
     argparser.add_argument('--adv_attack_iters', type=float, default=7, help="The adversarial attack number of iterations value")  # 7 9 11 13 17 19
