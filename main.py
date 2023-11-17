@@ -115,8 +115,10 @@ def main(args):
 
             #### Testing ####
             if step % 100 == 0:
+                acc_test = 0.0
                 torch.save(model.state_dict(), f'{store_dir}/checkpoints/last.pt')
                 accs = []
+                acc_test_avg = 0.0
                 for _ in range(100):
                     # test
                     x_spt, y_spt, x_qry, y_qry = db_train.next('test')
@@ -138,17 +140,18 @@ def main(args):
                         else:
                             acc_test += test_acc[-1]
                     acc_test /= args.task_num
+                    acc_test_avg += acc_test
                 # [b, update_step+1]
-
+                acc_test_avg /= 100
                 # print(type(accs), accs)
                 if acc_test >= acc_best:
                     acc_best = acc_test
                     print("Save best weights !!!")
                     torch.save(model.state_dict(), f'{store_dir}/checkpoints/best_new.pt')
                     # accs = np.array(accs).mean(axis=0).astype(np.float16)
-                print('Epoch: {} Testing Acc: {}, Best Acc: {} \n'.format(step, acc_test, acc_best))
+                print('Epoch: {} Testing Acc: {}, Best Acc: {} \n'.format(step, acc_test, acc_test_avg))
                 with open(f'{store_dir}/results.txt', 'a') as f:
-                    f.writelines('Epoch: {} Testing Acc: {}, Best Acc: {} \n'.format(step, acc_test, acc_best))
+                    f.writelines('Epoch: {} Testing Acc: {}, Best Acc: {} \n'.format(step, acc_test, acc_test_avg))
                     f.close()
                 acc_test = 0.0
     else:
@@ -172,8 +175,10 @@ def main(args):
 
             # split to single task each time
             for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(x_spt, y_spt, x_qry, y_qry):
+                # print("-----------------", x_spt_one.max(), x_qry_one.max()) # ----------------- tensor(1., device='cuda:0') tensor(1., device='cuda:0')
+
                 if args.adv_attack == "LinfPGD":
-                    x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one)
+                    # x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one)
                     x_spt_one = at.attack(model.net, model.net.parameters(), x_spt_one, y_spt_one)
 
                 if args.model_name == "metanet_maml_at":
@@ -202,7 +207,7 @@ def main(args):
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('--epoch', type=int, help='epoch number', default=1000)
+    argparser.add_argument('--epoch', type=int, help='epoch number', default=5000)  # 1000 5000
     argparser.add_argument('--n_way', type=int, help='n way', default=5)
     argparser.add_argument('--k_spt', type=int, help='k shot for support set', default=1)
     argparser.add_argument('--k_qry', type=int, help='k shot for query set', default=5)
@@ -215,12 +220,12 @@ if __name__ == '__main__':
     argparser.add_argument('--update_step_test', type=int, help='update steps for finetunning', default=10)
     ###
     argparser.add_argument('--mode', type=str, help='The learning phase', default="train")  # train test
-    argparser.add_argument('--weight', type=str, help='The learning phase', default="/home/qle/Project/MetaLearning_FewShotLearning/source/MAML-Pytorch/experiments/omniglot/generic_metanet/2023-11-15_18-48-06/checkpoints/best_new.pt")
+    argparser.add_argument('--weight', type=str, help='The learning phase', default="/home/qle/Project/MetaLearning_FewShotLearning/source/MAML-Pytorch/experiments/omniglot/generic_metanet/2023-11-16_23-08-34/checkpoints/best_new.pt")
     argparser.add_argument('--data_name', type=str, help='The data configuration', default="omniglot")
     argparser.add_argument('--model_name', type=str, help='The model name', default="protonet_at")  # "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
     ## Adversarial attack
     argparser.add_argument('--adv_attack_type', type=str, default="white_box", help="The adversarial attack type")  # white_box, black_box
-    argparser.add_argument('--adv_attack', type=str, default=None, help="The adversarial attack")  ### None LinfPGD FGSM
+    argparser.add_argument('--adv_attack', type=str, default="LinfPGD", help="The adversarial attack")  ### None LinfPGD FGSM
     argparser.add_argument('--adv_attack_eps', type=float, default=16 / 255, help="The adversarial attack pertuabation level value")  # 8/255 16/255 32/255 64/255 128/255 1
     argparser.add_argument('--adv_attack_alpha', type=float, default=4 / 255, help="The adversarial attack step size value")  # 4/255 16/255 32/255 64/255 128/255 1
     argparser.add_argument('--adv_attack_iters', type=float, default=7, help="The adversarial attack number of iterations value")  # 7 9 11 13 17 19
