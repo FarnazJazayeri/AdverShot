@@ -217,4 +217,4 @@ class Meta(nn.Module):
         out_qry = self.net(x_qry, self.net.parameters(), bn_training=True)
         loss, acc = prototypical_loss(out_spt, y_spt, out_qry, y_qry)
 
-        return acc
+        return loss, acc
