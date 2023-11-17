@@ -179,7 +179,11 @@ def main(args):
 
                 if args.adv_attack == "LinfPGD":
                     # x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one)
-                    x_spt_one = at.attack(model.net, model.net.parameters(), x_spt_one, y_spt_one)
+                    if args.model_name == "protonet_at" or args.model_name == "generic_protonet":
+                        at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one,
+                                  extra_params=dict(x_spt=x_spt_one, y_spt=y_spt_one))
+                    else:
+                        x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one)
 
                 if args.model_name == "metanet_maml_at":
                     test_acc, accs_adv, accs_adv_prior = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
