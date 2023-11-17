@@ -214,7 +214,7 @@ if __name__ == '__main__':
     argparser.add_argument('--update_step', type=int, help='task-level inner update steps', default=5)
     argparser.add_argument('--update_step_test', type=int, help='update steps for finetunning', default=10)
     ###
-    argparser.add_argument('--mode', type=str, help='The learning phase', default="test")  # train test
+    argparser.add_argument('--mode', type=str, help='The learning phase', default="train")  # train test
     argparser.add_argument('--weight', type=str, help='The learning phase', default="/home/qle/Project/MetaLearning_FewShotLearning/source/MAML-Pytorch/experiments/omniglot/generic_metanet/2023-11-15_18-48-06/checkpoints/best_new.pt")
     argparser.add_argument('--data_name', type=str, help='The data configuration', default="omniglot")
     argparser.add_argument('--model_name', type=str, help='The model name', default="generic_metanet")  # "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
