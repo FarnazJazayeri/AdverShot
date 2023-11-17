@@ -210,7 +210,6 @@ class Meta(nn.Module):
                 correct = torch.eq(pred_q, y_qry).sum().item()  # convert to numpy
                 corrects[k + 1] = corrects[k + 1] + correct
 
-
         del net
 
         accs = np.array(corrects) / querysz

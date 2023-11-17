@@ -59,7 +59,8 @@ def prototypical_loss(out_spt, y_spt, out_qry, y_qry):
     '''
     # target_cpu = target.to('cpu')
     # input_cpu = input.to('cpu')
-    out_spt_cpu, y_spt_cpu, out_qry_cpu, y_qry_cpu = out_spt.to('cpu'), y_spt.to('cpu'), out_qry.to('cpu'), y_qry.to('cpu')
+    out_spt_cpu, y_spt_cpu, out_qry_cpu, y_qry_cpu = out_spt.to('cpu'), y_spt.to('cpu'), out_qry.to('cpu'), y_qry.to(
+        'cpu')
 
     n_classes = len(set(y_spt.tolist()))
     n_query = out_qry.size()[0]
@@ -80,7 +81,7 @@ def prototypical_loss(out_spt, y_spt, out_qry, y_qry):
 
     prototypes = []
     for c in range(n_classes):
-        sample_class_i_idx = torch.IntTensor([i for i,v in enumerate(y_spt_cpu.tolist()) if v == c])
+        sample_class_i_idx = torch.IntTensor([i for i, v in enumerate(y_spt_cpu.tolist()) if v == c])
         sample_class_i = out_spt_cpu.index_select(dim=0, index=sample_class_i_idx)
         prototypes.append(sample_class_i.mean(dim=0))
 
@@ -100,7 +101,6 @@ def prototypical_loss(out_spt, y_spt, out_qry, y_qry):
     acc_val = y_hat.eq(y_qry_cpu).float().mean()
 
     return loss_val, acc_val
-
 
 ##################
 class Meta(nn.Module):
@@ -153,7 +153,7 @@ class Meta(nn.Module):
 
         return total_norm / counter
 
-    def forward(self, x_spt, y_spt, x_qry, y_qry, need_adv = True):
+    def forward(self, x_spt, y_spt, x_qry, y_qry, need_adv=True):
         """
 
         :param x_spt:   [b, setsz, c_, h, w]
@@ -169,7 +169,7 @@ class Meta(nn.Module):
         loss_q_adv = 0.0
         correct_q_adv = 0.0
         eps, step = (self.adv_eps, self.adv_iters)
-        at = PGD(eps=eps, sigma=self.adv_alpha, nb_iter=step) ####################
+        at = PGD(eps=eps, sigma=self.adv_alpha, nb_iter=step)  ####################
         for i in range(task_num):
             self.meta_optim.zero_grad()
             # x, y = batch
@@ -181,7 +181,8 @@ class Meta(nn.Module):
             #                    n_support=opt.num_support_tr)
             loss, acc = prototypical_loss(out_spt, y_spt[i], out_qry, y_qry[i])
             #################
-            out_qry_adv = at.attack(self.net, self.net.parameters(), x_qry[i], y_qry[i])
+            out_qry_adv = at.attack(self.net, self.net.parameters(), x_qry[i], y_qry[i],
+                                    extra_params=dict(x_spt=x_spt[i], y_spt=y_spt[i]))
             out_qry_adv = self.net(out_qry_adv, self.net.parameters(), bn_training=True)
             loss_adv, acc_adv = prototypical_loss(out_spt, y_spt[i], out_qry_adv, y_qry[i])
             ###################
@@ -191,7 +192,7 @@ class Meta(nn.Module):
             loss_q_adv += loss_adv
             correct_q_adv += acc_adv
             ##############
-            #loss.backward()
+            # loss.backward()
             loss_total = loss + loss_adv
             loss_total.backward()
             self.meta_optim.step()
@@ -204,7 +205,7 @@ class Meta(nn.Module):
 
         return loss_q, correct_q
 
-    def test(self, x_spt, y_spt, x_qry, y_qry, need_adv = False):
+    def test(self, x_spt, y_spt, x_qry, y_qry, need_adv=False):
         """
 
         :param x_spt:   [setsz, c_, h, w]

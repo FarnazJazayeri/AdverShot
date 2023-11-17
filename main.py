@@ -217,7 +217,7 @@ if __name__ == '__main__':
     argparser.add_argument('--mode', type=str, help='The learning phase', default="train")  # train test
     argparser.add_argument('--weight', type=str, help='The learning phase', default="/home/qle/Project/MetaLearning_FewShotLearning/source/MAML-Pytorch/experiments/omniglot/generic_metanet/2023-11-15_18-48-06/checkpoints/best_new.pt")
     argparser.add_argument('--data_name', type=str, help='The data configuration', default="omniglot")
-    argparser.add_argument('--model_name', type=str, help='The model name', default="generic_metanet")  # "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
+    argparser.add_argument('--model_name', type=str, help='The model name', default="protonet_at")  # "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
     ## Adversarial attack
     argparser.add_argument('--adv_attack_type', type=str, default="white_box", help="The adversarial attack type")  # white_box, black_box
     argparser.add_argument('--adv_attack', type=str, default=None, help="The adversarial attack")  ### None LinfPGD FGSM
