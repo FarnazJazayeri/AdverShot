@@ -233,7 +233,7 @@ if __name__ == '__main__':
     argparser.add_argument('--adv_attack_eps', type=float, default=16 / 255, help="The adversarial attack pertuabation level value")  # 8/255 16/255 32/255 64/255 128/255 1
     argparser.add_argument('--adv_attack_alpha', type=float, default=4 / 255, help="The adversarial attack step size value")  # 4/255 16/255 32/255 64/255 128/255 1
     argparser.add_argument('--adv_attack_iters', type=float, default=7, help="The adversarial attack number of iterations value")  # 7 9 11 13 17 19
-    argparser.add_argument('--adv_defense', type=str, default=None, help="The adversarial defense")  ### None AT  TRADES
+    argparser.add_argument('--adv_defense', type=str, default=None, help="The adversarial defense")  ### None AT TRADES
 
     args = argparser.parse_args()
 
