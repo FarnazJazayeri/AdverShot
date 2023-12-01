@@ -27,17 +27,28 @@ class Learner(nn.Module):
 
     def assign_vars_bn(self, vars, vars_bn):
         param_index = 0
-        vars_iter = iter(vars)
+        if vars is not None:
+            vars_iter = iter(vars)
         for module in self.model.modules():
             if isinstance(module, torch.nn.BatchNorm2d):
                 # Assign the modified parameters to the batch normalization layer
-                module.running_mean = vars_bn[param_index]
-                module.running_var = vars_bn[param_index + 1]
-                param_index += 2
+                if vars_bn is not None:
+                    module.running_mean = vars_bn[param_index]
+                    module.running_var = vars_bn[param_index + 1]
+                    param_index += 2
             elif hasattr(module, 'weight'):
-                module.weight.data = next(vars_iter)
+                if vars is not None:
+                    module.weight.data = next(vars_iter)
 
-    def forward(self):
+    def forward(self, x, vars=None, bn_training=True):
+        if vars is not None:
+            self.assign_vars_bn(vars=vars, vars_bn=None)
+        for module in self.model.modules():
+            if isinstance(module, torch.nn.BatchNorm2d):
+                module.requires_grad_(bn_training)
+
+        out = self.model(x)
+        return out
 
 ### testing
 learner = Learner(model_name='resnet_18')
