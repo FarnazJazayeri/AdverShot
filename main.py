@@ -15,51 +15,35 @@ def main(args):
     device = torch.device('cuda')
 
     ### Model config
-    if args.model_name == "generic_metanet":
+    if args.model_name == "generic_metanet" or args.model_name == "resnet18_maml":
         from meta_maml import Meta
-    elif args.model_name == "metanet_maml_at":
+    # elif args.model_name == "metanet_maml_at":
+    elif "maml_at" in args.model_name:
         from meta_maml_at import Meta
-    elif args.model_name == "generic_protonet":
+    elif args.model_name == "generic_protonet" or args.model_name == "resnet18_protonet":
         from meta_proto import Meta
-    elif args.model_name == "protonet_at":
+    # elif args.model_name == "protonet_at":
+    elif "protonet_at" in args.model_name:
         from meta_proto_at import Meta
 
     ### 1) Model
     if args.model_name == "generic_metanet" or args.model_name == "metanet_maml_at":
-        config = [
-            ('conv2d', [64, 1, 3, 3, 2, 0]),
-            ('relu', [True]),
-            ('bn', [64]),
-            ('conv2d', [64, 64, 3, 3, 2, 0]),
-            ('relu', [True]),
-            ('bn', [64]),
-            ('conv2d', [64, 64, 3, 3, 2, 0]),
-            ('relu', [True]),
-            ('bn', [64]),
-            ('conv2d', [64, 64, 2, 2, 1, 0]),
-            ('relu', [True]),
-            ('bn', [64]),
-            ('flatten', []),
-            ('linear', [args.n_way, 64])
-        ]
+        from config import config_maml
+        config = config_maml
         model = Meta(args, config).to(device)
     elif args.model_name == "generic_protonet" or args.model_name == "protonet_at":
-        config = [
-            ('conv2d', [64, 1, 3, 3, 2, 0]),
-            ('relu', [True]),
-            ('bn', [64]),
-            ('conv2d', [64, 64, 3, 3, 2, 0]),
-            ('relu', [True]),
-            ('bn', [64]),
-            ('conv2d', [64, 64, 3, 3, 2, 0]),
-            ('relu', [True]),
-            ('bn', [64]),
-            ('conv2d', [64, 64, 2, 2, 1, 0]),
-            ('relu', [True]),
-            ('bn', [64]),
-            ('flatten', []),
-            ('linear', [64, 64])
-        ]
+        from config import config_proto
+        config = config_proto
+        model = Meta(args, config).to(device)
+
+    elif args.model_name == "resnet18_maml" or args.model_name == "resnet18_maml_at":
+        # from config import config_maml_resnet_18
+        config = None
+        model = Meta(args, config).to(device)
+
+    elif args.model_name == "resnet18_protonet" or args.model_name == "resnet18_protonet_at":
+        # from config import config_proto_resnet_18
+        config = None
         model = Meta(args, config).to(device)
 
     tmp = filter(lambda x: x.requires_grad, model.parameters())
@@ -102,7 +86,7 @@ def main(args):
             else:
                 accs = model(x_spt, y_spt, x_qry, y_qry)
 
-            if step % 10 == 0:
+            if (step + 1) % args.train_period_print == 0:
                 print('Epoch: {} Training Acc: {}\n'.format(step, accs))
                 with open(f'{store_dir}/results.txt', 'a') as f:
                     f.writelines('Epoch: {} Training Acc: {}\n'.format(step, accs))
@@ -114,13 +98,14 @@ def main(args):
             ##
 
             #### Testing ####
-            if step % 100 == 0:
+            if (step + 1) % args.test_period_print == 0:
                 acc_test = 0.0
                 torch.save(model.state_dict(), f'{store_dir}/checkpoints/last.pt')
                 accs = []
                 acc_test_avg = 0.0
-                for _ in range(100):
+                for i in range(args.test_size):
                     # test
+                    print(i)
                     x_spt, y_spt, x_qry, y_qry = db_train.next('test')
                     x_spt, y_spt, x_qry, y_qry = torch.from_numpy(x_spt).to(device), torch.from_numpy(y_spt).to(device), \
                         torch.from_numpy(x_qry).to(device), torch.from_numpy(y_qry).to(device)
@@ -128,21 +113,23 @@ def main(args):
                     # split to single task each time
                     for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(x_spt, y_spt, x_qry, y_qry):
                         # print("------------------------", x_spt_one.shape) # torch.Size([5, 1, 28, 28])
-                        if args.model_name == "metanet_maml_at":
+                        # if args.model_name == "metanet_maml_at":
+                        if "maml_at" in args.model_name:
                             test_acc, accs_adv, accs_adv_prior = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
-                        elif args.model_name == "generic_metanet":
+                        elif args.model_name == "generic_metanet" or args.model_name == "resnet18_maml":
                             test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                         else:
                             test_loss, test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                         accs.append(test_acc)
-                        if args.model_name == "protonet_at" or args.model_name == "generic_protonet":
+                        # if args.model_name == "protonet_at" or args.model_name == "generic_protonet":
+                        if "protonet" in args.model_name:
                             acc_test += test_acc
                         else:
                             acc_test += test_acc[-1]
                     acc_test /= args.task_num
                     acc_test_avg += acc_test
                 # [b, update_step+1]
-                acc_test_avg /= 100
+                acc_test_avg /= args.test_size
                 # print(type(accs), accs)
                 if acc_test >= acc_best:
                     acc_best = acc_test
@@ -180,19 +167,20 @@ def main(args):
                 if args.adv_attack == "LinfPGD":
                     # x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one)
                     if args.model_name == "protonet_at" or args.model_name == "generic_protonet":
-                        at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one,
-                                  extra_params=dict(x_spt=x_spt_one, y_spt=y_spt_one))
+                        x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one,
+                                              extra_params=dict(x_spt=x_spt_one, y_spt=y_spt_one))
                     else:
                         x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one)
 
-                if args.model_name == "metanet_maml_at":
+                if args.model_name == "metanet_maml_at" or args.model_name == "resnet18_maml_at":
                     test_acc, accs_adv, accs_adv_prior = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
-                elif args.model_name == "generic_metanet":
+                elif args.model_name == "generic_metanet" or args.model_name == "resnet18_maml":
                     test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                 else:
                     test_loss, test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                 accs.append(test_acc)
-                if args.model_name == "protonet_at" or args.model_name == "generic_protonet":
+                # if args.model_name == "protonet_at" or args.model_name == "generic_protonet":
+                if "protonet" in args.model_name:
                     acc_test += test_acc
                 else:
                     acc_test += test_acc[-1]
@@ -211,30 +199,36 @@ def main(args):
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('--epoch', type=int, help='epoch number', default=5000)  # 1000 5000
+    argparser.add_argument('--epoch', type=int, help='epoch number', default=1000)  # 1000 5000
     argparser.add_argument('--n_way', type=int, help='n way', default=5)
     argparser.add_argument('--k_spt', type=int, help='k shot for support set', default=1)
     argparser.add_argument('--k_qry', type=int, help='k shot for query set', default=5)
     argparser.add_argument('--imgsz', type=int, help='imgsz', default=28)
     argparser.add_argument('--imgc', type=int, help='imgc', default=1)
     argparser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=32)
-    argparser.add_argument('--meta_lr', type=float, help='meta-level outer learning rate', default=1e-3)
-    argparser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=0.4)
+    argparser.add_argument('--meta_lr', type=float, help='meta-level outer learning rate', default=0.001)  # 0.001
+    argparser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=0.4)  # 0.4
     argparser.add_argument('--update_step', type=int, help='task-level inner update steps', default=5)
     argparser.add_argument('--update_step_test', type=int, help='update steps for finetunning', default=10)
+    argparser.add_argument('--hidden_channel', type=int, help='hidden_channel', default=64)
+    argparser.add_argument('--emb_channel', type=int, help='emb_channel', default=64)
     ###
     argparser.add_argument('--mode', type=str, help='The learning phase', default="train")  # train test
-    argparser.add_argument('--weight', type=str, help='The learning phase', default="/home/qle/Project/MetaLearning_FewShotLearning/source/MAML-Pytorch/experiments/omniglot/generic_metanet/2023-11-16_23-08-34/checkpoints/best_new.pt")
+    argparser.add_argument('--weight', type=str, help='The learning phase', default=None)
     argparser.add_argument('--data_name', type=str, help='The data configuration', default="omniglot")
-    argparser.add_argument('--model_name', type=str, help='The model name', default="protonet_at")  # "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
+    argparser.add_argument('--model_name', type=str, help='The model name', default="resnet18_maml")  # "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)  "resnet18_maml" (5)
+    argparser.add_argument('--train_period_print', type=int, help='train_period_print', default=20)
+    argparser.add_argument('--test_period_print', type=int, help='test_period_print', default=50)
+    argparser.add_argument('--test_size', type=int, help='test_size', default=5)
     ## Adversarial attack
     argparser.add_argument('--adv_attack_type', type=str, default="white_box", help="The adversarial attack type")  # white_box, black_box
     argparser.add_argument('--adv_attack', type=str, default="LinfPGD", help="The adversarial attack")  ### None LinfPGD FGSM
-    argparser.add_argument('--adv_attack_eps', type=float, default=16 / 255, help="The adversarial attack pertuabation level value")  # 8/255 16/255 32/255 64/255 128/255 1
+    argparser.add_argument('--adv_attack_eps', type=float, default=32 / 255, help="The adversarial attack pertuabation level value")  # 8/255 16/255 32/255 64/255 128/255 1
     argparser.add_argument('--adv_attack_alpha', type=float, default=4 / 255, help="The adversarial attack step size value")  # 4/255 16/255 32/255 64/255 128/255 1
     argparser.add_argument('--adv_attack_iters', type=float, default=7, help="The adversarial attack number of iterations value")  # 7 9 11 13 17 19
-    argparser.add_argument('--adv_defense', type=str, default=None, help="The adversarial defense")  ### None AT TRADES
-
+    argparser.add_argument('--adv_defense', type=str, default=None, help="The adversarial defense")  ### None AT  TRADES
+    ## Version control
+    # argparser.add_argument('--leanrer_version', type=int, default=2, help="leanrer_version") # 1, 2
     args = argparser.parse_args()
 
     main(args)
