@@ -3,67 +3,6 @@ from torch.utils.data import Dataset, Subset
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 
 
-def get_dataset(name: str, *args, **kwargs) -> Dataset:
-    kwargs.setdefault("download", True)
-    kwargs.setdefault("transform", get_transforms(name))
-
-    name = name.lower()
-    if name == "omniglot":
-        from torchvision.datasets import Omniglot
-
-        return Omniglot(*args, **kwargs)
-    elif name == "cifar10":
-        from torchvision.datasets import CIFAR10
-
-        return CIFAR10(*args, **kwargs)
-    elif name == "cifar100":
-        from torchvision.datasets import CIFAR100
-
-        return CIFAR100(*args, **kwargs)
-    elif name == "mnist":
-        from torchvision.datasets import MNIST
-
-        return MNIST(*args, **kwargs)
-    else:
-        raise ValueError(f"Unknown dataset {name}")
-
-
-def get_transforms(name: str, *args, **kwargs) -> Compose:
-    name = name.lower()
-    if name == "omniglot":
-        return Compose(
-            [
-                Resize((28, 28)),
-                ToTensor(),
-                Normalize((0.92206,), (0.08426,)),
-            ]
-        )
-    elif name == "cifar10":
-        return Compose(
-            [
-                Resize((32, 32)),
-                ToTensor(),
-                Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261)),
-            ]
-        )
-    elif name == "cifar100":
-        return Compose(
-            [
-                Resize((32, 32)),
-                ToTensor(),
-                Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)),
-            ]
-        )
-    elif name == "mnist":
-        return Compose(
-            [
-                Resize((28, 28)),
-                ToTensor(),
-                Normalize((0.1307,), (0.3081,)),
-            ]
-        )
-    else:
-        return None
 
 
 class NShotDataset(Dataset):
@@ -103,7 +42,10 @@ class NShotDataset(Dataset):
         self.reset_labels = reset_labels
 
         if targets is None:
-            self.targets = torch.tensor(dataset.targets)
+            if hasattr(dataset, 'targets') and dataset.targets is not None:
+                self.targets = torch.tensor(dataset.targets)
+            else:
+                self.targets = torch.tensor([y for _, y in dataset])
         else:
             self.targets = torch.tensor(targets)
 
@@ -142,7 +84,7 @@ class NShotDataset(Dataset):
 
         # Split the sampled indices into support and query indices
         sprt_idx = sampled_indices[:, : self.k_sprt].reshape(-1)
-        query_idx = sampled_indices[:, self.k_sprt :].reshape(-1)
+        query_idx = sampled_indices[:, self.k_sprt, :].reshape(-1)
 
         # Shuffle indices if requested
         if self.shuffle:
