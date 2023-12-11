@@ -35,7 +35,7 @@ class Learner(nn.Module):
                 torch.nn.init.kaiming_normal_(w)
                 self.vars.append(w)
                 # [ch_out]
-                self.vars.append(nn.Parameter(torch.zeros(param[0])))
+                self.vars.append(nn.Parameter(torch.zeros(param[0]))) ############
 
             elif name is 'convt2d':
                 # [ch_in, ch_out, kernelsz, kernelsz, stride, padding]
@@ -60,13 +60,12 @@ class Learner(nn.Module):
                 w = nn.Parameter(torch.ones(param[0]))
                 self.vars.append(w)
                 # [ch_out]
-                self.vars.append(nn.Parameter(torch.zeros(param[0])))
+                self.vars.append(nn.Parameter(torch.zeros(param[0]))) ###############
+
                 # must set requires_grad=False
                 running_mean = nn.Parameter(torch.zeros(param[0]), requires_grad=False)
                 running_var = nn.Parameter(torch.ones(param[0]), requires_grad=False)
                 self.vars_bn.extend([running_mean, running_var])
-            elif name is 'backbone_resnet_18':
-                import torchvision.models as models
 
 
             elif name in ['tanh', 'relu', 'upsample', 'avg_pool2d', 'max_pool2d',
@@ -74,10 +73,6 @@ class Learner(nn.Module):
                 continue
             else:
                 raise NotImplementedError
-
-
-
-
 
 
     def extra_repr(self):
@@ -119,7 +114,7 @@ class Learner(nn.Module):
 
 
 
-    def forward(self, x, vars=None, bn_training=True):
+    def forward(self, x, vars=None, bn_training=True, fast_parameter_return=False, net_params=False):
         """
         This function can be called by finetunning, however, in finetunning, we dont wish to update
         running_mean/running_var. Thought weights/bias of bn is updated, it has been separated by fast_weights.
