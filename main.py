@@ -1,8 +1,10 @@
 import torch, os
 import numpy as np
 import argparse
-import datetime
+
 from data.dataloader import MyDataLoader
+import datetime
+from config import create_config
 
 
 def main(args):
@@ -11,7 +13,7 @@ def main(args):
     np.random.seed(222)
 
     print(args)
-    device = torch.device("cuda")
+    device = torch.device('cuda')
 
     ### Model config
     if args.model_name == "generic_metanet" or args.model_name == "resnet18_maml":
@@ -19,9 +21,8 @@ def main(args):
     # elif args.model_name == "metanet_maml_at":
     elif "maml_at" in args.model_name:
         from meta_maml_at import Meta
-    elif (
-            args.model_name == "generic_protonet" or args.model_name == "resnet18_protonet"
-    ):
+    elif args.model_name == "generic_protonet" or args.model_name == "resnet18_protonet":
+
         from meta_proto import Meta
     # elif args.model_name == "protonet_at":
     elif "protonet_at" in args.model_name:
@@ -29,14 +30,20 @@ def main(args):
 
     ### 1) Model
     if args.model_name == "generic_metanet" or args.model_name == "metanet_maml_at":
-        from config import config_maml
-
-        config = config_maml
+        #from config import config_maml
+        #config = config_maml
+        config = create_config(num_layers=args.num_layers,
+                               hidden_channel=args.hidden_channel, out_channel=args.n_way,
+                               img_shape=args.img_shape, gate_rnr=False)
+        print("--------", config)
         model = Meta(args, config).to(device)
     elif args.model_name == "generic_protonet" or args.model_name == "protonet_at":
-        from config import config_proto
-
-        config = config_proto
+        #from config import config_proto
+        #config = config_proto
+        config = create_config(num_layers=args.num_layers,
+                               hidden_channel=args.hidden_channel, out_channel=args.emb_channel,
+                               img_shape=args.img_shape, gate_rnr=False)
+        print(config)
         model = Meta(args, config).to(device)
 
     elif args.model_name == "resnet18_maml" or args.model_name == "resnet18_maml_at":
@@ -44,10 +51,8 @@ def main(args):
         config = None
         model = Meta(args, config).to(device)
 
-    elif (
-            args.model_name == "resnet18_protonet"
-            or args.model_name == "resnet18_protonet_at"
-    ):
+    elif args.model_name == "resnet18_protonet" or args.model_name == "resnet18_protonet_at":
+
         # from config import config_proto_resnet_18
         config = None
         model = Meta(args, config).to(device)
@@ -55,7 +60,7 @@ def main(args):
     tmp = filter(lambda x: x.requires_grad, model.parameters())
     num = sum(map(lambda x: np.prod(x.shape), tmp))
     print(model)
-    print("Total trainable tensors:", num)
+    print('Total trainable tensors:', num)
 
     ### 2) Train dataloader
     # db_train = NShotDataset(
@@ -84,11 +89,9 @@ def main(args):
     ##
     if args.mode == "train":
         current_datetime = datetime.datetime.now()
-        datetime_string = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+        datetime_string = current_datetime.strftime('%Y-%m-%d_%H-%M-%S')
         if args.adv_defense is None:
-            store_dir = (
-                f"experiments/{args.data_name}/{args.model_name}/{datetime_string}"
-            )
+            store_dir = f"experiments/{args.data_name}/{args.model_name}/{datetime_string}"
         else:
             store_dir = f"experiments/{args.data_name}/{args.model_name}_{args.adv_defense}/{datetime_string}"
         os.makedirs(store_dir, exist_ok=True)
@@ -113,12 +116,11 @@ def main(args):
                 # )
 
                 # set traning=True to update running_mean, running_variance, bn_weights, bn_bias
+                y_spt = y_spt.type(torch.LongTensor).to(device)
+                y_qry = y_qry.type(torch.LongTensor).to(device)
                 if args.model_name == "metanet_maml_at":
                     accs, accs_adv = model(x_spt, y_spt, x_qry, y_qry)
-                elif (
-                        args.model_name == "generic_protonet"
-                        or args.model_name == "protonet_at"
-                ):
+                elif args.model_name == "generic_protonet" or args.model_name == "protonet_at":
                     loss, accs = model(x_spt, y_spt, x_qry, y_qry)
                 else:
                     accs = model(x_spt, y_spt, x_qry, y_qry)
@@ -211,17 +213,10 @@ def main(args):
                 step += 1
     else:
         #### Testing ####
-        model.load_state_dict(
-            torch.load(args.weight)
-        )  ####################### load the best weight ##########################
+        model.load_state_dict(torch.load(args.weight))  ####################### load the best weight ##########################
         if args.adv_attack == "LinfPGD":
             from attack import PGD
-
-            at = PGD(
-                eps=args.adv_attack_eps,
-                sigma=args.adv_attack_alpha,
-                nb_iter=args.adv_attack_iters,
-            )
+            at = PGD(eps=args.adv_attack_eps, sigma=args.adv_attack_alpha, nb_iter=args.adv_attack_iters)
         else:
             at = None
         accs = []
@@ -230,54 +225,34 @@ def main(args):
         for i, (x_spt, y_spt, x_qry, y_qry) in enumerate(test_dl):
             # test
             x_spt, y_spt, x_qry, y_qry = (
-                torch.from_numpy(x_spt).to(device),
-                torch.from_numpy(y_spt).to(device),
-                torch.from_numpy(x_qry).to(device),
-                torch.from_numpy(y_qry).to(device),
+                torch.stack(x_spt, dim=1).to(device),
+                torch.stack(y_spt, dim=1).to(device),
+                torch.stack(x_qry, dim=1).to(device),
+                torch.stack(y_qry, dim=1).to(device),
             )
-
             # print("--------------", x_spt.shape, x_qry.shape) # -------------- torch.Size([32, 5, 1, 28, 28]) torch.Size([32, 25, 1, 28, 28])
 
             # split to single task each time
-            for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(
-                    x_spt, y_spt, x_qry, y_qry
-            ):
+            for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(x_spt, y_spt, x_qry, y_qry):
+
                 # print("-----------------", x_spt_one.max(), x_qry_one.max()) # ----------------- tensor(1., device='cuda:0') tensor(1., device='cuda:0')
 
                 if args.adv_attack == "LinfPGD":
                     # x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one)
-                    if (
-                            args.model_name == "protonet_at"
-                            or args.model_name == "generic_protonet"
-                    ):
-                        x_qry_one = at.attack(
-                            model.net,
-                            model.net.parameters(),
-                            x_qry_one,
-                            y_qry_one,
-                            extra_params=dict(x_spt=x_spt_one, y_spt=y_spt_one),
-                        )
-                    else:
-                        x_qry_one = at.attack(
-                            model.net, model.net.parameters(), x_qry_one, y_qry_one
-                        )
 
-                if (
-                        args.model_name == "metanet_maml_at"
-                        or args.model_name == "resnet18_maml_at"
-                ):
-                    test_acc, accs_adv, accs_adv_prior = model.test(
-                        x_spt_one, y_spt_one, x_qry_one, y_qry_one
-                    )
-                elif (
-                        args.model_name == "generic_metanet"
-                        or args.model_name == "resnet18_maml"
-                ):
+                    if args.model_name == "protonet_at" or args.model_name == "generic_protonet":
+                        x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one,
+                                              extra_params=dict(x_spt=x_spt_one, y_spt=y_spt_one))
+                    else:
+                        x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one)
+
+                if args.model_name == "metanet_maml_at" or args.model_name == "resnet18_maml_at":
+                    test_acc, accs_adv, accs_adv_prior = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
+                elif args.model_name == "generic_metanet" or args.model_name == "resnet18_maml":
+
                     test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                 else:
-                    test_loss, test_acc = model.test(
-                        x_spt_one, y_spt_one, x_qry_one, y_qry_one
-                    )
+                    test_loss, test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                 accs.append(test_acc)
                 # if args.model_name == "protonet_at" or args.model_name == "generic_protonet":
                 if "protonet" in args.model_name:
@@ -288,21 +263,20 @@ def main(args):
             acc_test_avg += acc_test
 
             print(f"Epoch: {i}, test acc: {acc_test}")
-            with open(f"{os.path.dirname(args.weight)}/results_test.txt", "a") as f:
+            with open(f"{os.path.dirname(args.weight)}/results_test.txt", 'a') as f:
                 f.writelines(f"Epoch: {i}, test acc: {acc_test} \n")
             acc_test = 0.0
         acc_test_avg /= 100
         print(f"Test acc avg: {acc_test_avg}")
-        with open(f"{os.path.dirname(args.weight)}/results_test.txt", "a") as f:
+        with open(f"{os.path.dirname(args.weight)}/results_test.txt", 'a') as f:
             f.writelines(f"Test acc avg: {acc_test_avg}")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
     argparser.add_argument("--epoch", type=int, help="epoch number", default=1000)  # 1000 5000
     argparser.add_argument("--n_way", type=int, help="n way", default=5)
-    argparser.add_argument("--k_spt", type=int, help="k shot for support set", default=1
-    )
+    argparser.add_argument("--k_spt", type=int, help="k shot for support set", default=1)
     argparser.add_argument("--k_qry", type=int, help="k shot for query set", default=5)
     argparser.add_argument("--imgsz", type=int, help="imgsz", default=28)
     argparser.add_argument("--imgc", type=int, help="imgc", default=1)
@@ -311,15 +285,20 @@ if __name__ == "__main__":
     argparser.add_argument("--update_lr", type=float, help="task-level inner update learning rate", default=0.4)  # 0.4
     argparser.add_argument("--update_step", type=int, help="task-level inner update steps", default=5)
     argparser.add_argument("--update_step_test", type=int, help="update steps for finetunning", default=10)
-    argparser.add_argument("--hidden_channel", type=int, help="hidden_channel", default=64)
+    argparser.add_argument("--hidden_channel", type=int, help="hidden_channel", default=128)
     argparser.add_argument("--emb_channel", type=int, help="emb_channel", default=64)
+    argparser.add_argument('--num_layers', type=int, help='The number of layers', default=3)
+    argparser.add_argument('--img_shape', type=tuple, help='The image shape', default=(1, 28, 28))
     ###
     argparser.add_argument("--mode", type=str, help="The learning phase", default="train")  # train test
     argparser.add_argument("--weight", type=str, help="The learning phase", default=None)
     argparser.add_argument("--data_name", type=str, help="The data configuration", default="omniglot")
-    argparser.add_argument("--model_name", type=str, help="The model name", default="protonet_at")  # "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)  "resnet18_maml" (5)
-    argparser.add_argument("--train_period_print", type=int, help="train_period_print", default=10)
-    argparser.add_argument("--test_period_print", type=int, help="test_period_print", default=50)
+    argparser.add_argument("--model_name", type=str, help="The model name", default="protonet_at")
+    # Task 1: "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
+    # Task 1: "metanet_maml_at_gru" (5)  "protonet_at_gru" (6)
+    # "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)  "resnet18_maml" (5)
+    argparser.add_argument("--train_period_print", type=int, help="train_period_print", default=1)
+    argparser.add_argument("--test_period_print", type=int, help="test_period_print", default=1)
     argparser.add_argument("--test_size", type=int, help="test_size", default=5)
     ## Adversarial attack
     argparser.add_argument("--adv_attack_type", type=str, default="white_box", help="The adversarial attack type")  # white_box, black_box

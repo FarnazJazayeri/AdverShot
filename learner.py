@@ -28,7 +28,8 @@ class Learner(nn.Module):
         self.vars_bn = nn.ParameterList()
 
         for i, (name, param) in enumerate(self.config):
-            if name is 'conv2d':
+            #if name is 'conv2d':
+            if 'conv2d' in name:
                 # [ch_out, ch_in, kernelsz, kernelsz]
                 w = nn.Parameter(torch.ones(*param[:4]))
                 # gain=1 according to cbfin's implementation
@@ -139,6 +140,16 @@ class Learner(nn.Module):
                 x = F.conv2d(x, w, b, stride=param[4], padding=param[5])
                 idx += 2
                 # print(name, param, '\tout:', x.shape)
+            ### RNN ###
+            elif name is 'conv2d_z':
+                w_z, b_z = vars[idx], vars[idx + 1]
+                idx += 2
+            elif name is 'conv2d_r':
+                w_r, b_r = vars[idx], vars[idx + 1]
+            elif name is 'conv2d_h':
+                w_h, b_h = vars[idx], vars[idx + 1]
+                pass
+            ###
             elif name is 'convt2d':
                 w, b = vars[idx], vars[idx + 1]
                 # remember to keep synchrozied of forward_encoder and forward_decoder!
