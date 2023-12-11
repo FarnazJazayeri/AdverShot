@@ -41,7 +41,7 @@ class OmniglotNShot:
                 self.x.append(np.array(imgs))
 
             # as different class may have different number of imgs
-            self.x = np.array(self.x).astype(float)  # [[20 imgs],..., 1623 classes in total]
+            self.x = np.array(self.x).astype(np.float)  # [[20 imgs],..., 1623 classes in total]
             # each character contains 20 imgs
             print('data shape:', self.x.shape)  # [1623, 20, 84, 84, 1]
             temp = []  # Free memory

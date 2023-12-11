@@ -36,6 +36,7 @@ class Omniglot(data.Dataset):
 
         self.all_items = find_classes(os.path.join(self.root, self.processed_folder))
         self.idx_classes = index_classes(self.all_items)
+        print(f"omniglot classes: {self.idx_classes}")
 
     def __getitem__(self, index):
         filename = self.all_items[index][0]
