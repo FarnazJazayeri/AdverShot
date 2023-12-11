@@ -4,7 +4,7 @@ from omniglotNShot import OmniglotNShot
 import argparse
 import datetime
 import datetime
-
+from config import create_config
 
 def main(args):
     torch.manual_seed(222)
@@ -28,12 +28,20 @@ def main(args):
 
     ### 1) Model
     if args.model_name == "generic_metanet" or args.model_name == "metanet_maml_at":
-        from config import config_maml
-        config = config_maml
+        #from config import config_maml
+        #config = config_maml
+        config = create_config(num_layers=args.num_layers,
+                               hidden_channel=args.hidden_channel, out_channel=args.n_way,
+                               img_shape=args.img_shape, gate_rnr=False)
+        print("--------", config)
         model = Meta(args, config).to(device)
     elif args.model_name == "generic_protonet" or args.model_name == "protonet_at":
-        from config import config_proto
-        config = config_proto
+        #from config import config_proto
+        #config = config_proto
+        config = create_config(num_layers=args.num_layers,
+                               hidden_channel=args.hidden_channel, out_channel=args.emb_channel,
+                               img_shape=args.img_shape, gate_rnr=False)
+        print(config)
         model = Meta(args, config).to(device)
 
     elif args.model_name == "resnet18_maml" or args.model_name == "resnet18_maml_at":
@@ -80,10 +88,16 @@ def main(args):
 
             # set traning=True to update running_mean, running_variance, bn_weights, bn_bias
             if args.model_name == "metanet_maml_at":
+                y_spt = y_spt.type(torch.LongTensor)
+                y_qry = y_qry.type(torch.LongTensor)
                 accs, accs_adv = model(x_spt, y_spt, x_qry, y_qry)
             elif args.model_name == "generic_protonet" or args.model_name == "protonet_at":
+                y_spt = y_spt.type(torch.LongTensor)
+                y_qry = y_qry.type(torch.LongTensor)
                 loss, accs = model(x_spt, y_spt, x_qry, y_qry)
             else:
+                y_spt = y_spt.type(torch.LongTensor)
+                y_qry = y_qry.type(torch.LongTensor)
                 accs = model(x_spt, y_spt, x_qry, y_qry)
 
             if (step + 1) % args.train_period_print == 0:
@@ -199,6 +213,7 @@ def main(args):
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
+    ### Model
     argparser.add_argument('--epoch', type=int, help='epoch number', default=1000)  # 1000 5000
     argparser.add_argument('--n_way', type=int, help='n way', default=5)
     argparser.add_argument('--k_spt', type=int, help='k shot for support set', default=1)
@@ -210,13 +225,17 @@ if __name__ == '__main__':
     argparser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=0.4)  # 0.4
     argparser.add_argument('--update_step', type=int, help='task-level inner update steps', default=5)
     argparser.add_argument('--update_step_test', type=int, help='update steps for finetunning', default=10)
-    argparser.add_argument('--hidden_channel', type=int, help='hidden_channel', default=64)
-    argparser.add_argument('--emb_channel', type=int, help='emb_channel', default=64)
-    ###
+    argparser.add_argument('--hidden_channel', type=int, help='hidden_channel', default=128) # 64 128
+    argparser.add_argument('--emb_channel', type=int, help='emb_channel', default=64) # 64
+    argparser.add_argument('--num_layers', type=int, help='The number of layers', default=3)
+    argparser.add_argument('--img_shape', type=tuple, help='The image shape', default=(1, 28, 28))
+    ### Data
     argparser.add_argument('--mode', type=str, help='The learning phase', default="train")  # train test
     argparser.add_argument('--weight', type=str, help='The learning phase', default=None)
     argparser.add_argument('--data_name', type=str, help='The data configuration', default="omniglot")
-    argparser.add_argument('--model_name', type=str, help='The model name', default="resnet18_maml")  # "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)  "resnet18_maml" (5)
+    argparser.add_argument('--model_name', type=str, help='The model name', default="generic_protonet")
+    # Task 1: "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
+    # Task 1: "metanet_maml_at_gru" (5)  "protonet_at_gru" (6)
     argparser.add_argument('--train_period_print', type=int, help='train_period_print', default=20)
     argparser.add_argument('--test_period_print', type=int, help='test_period_print', default=50)
     argparser.add_argument('--test_size', type=int, help='test_size', default=5)

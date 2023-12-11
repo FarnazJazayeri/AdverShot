@@ -93,7 +93,7 @@ def prototypical_loss(out_spt, y_spt, out_qry, y_qry):
     # dists = euclidean_dist(query_samples, prototypes)
     dists = euclidean_dist(out_qry_cpu, prototypes)
     criterion = nn.CrossEntropyLoss().to('cpu')
-    log_p_y = F.log_softmax(-dists, dim=1).view(n_query, n_classes)
+    log_p_y = F.log_softmax(-dists, dim=1).view(n_query, n_classes) ################################
     loss_val = criterion(log_p_y, y_qry_cpu)
     y_hat = torch.argmax(log_p_y, 1)
 
