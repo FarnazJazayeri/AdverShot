@@ -80,7 +80,8 @@ def main(args):
             train_dl, validation_dl, test_dl = dataloader.load_few_shot_dataset('cifar10')
         else:
             train_dl, validation_dl, test_dl = dataloader.load_dataset('cifar10')
-    print(f"Dataset: {args.data_name}_{args.dataloader_mode}, training set: {len(train_dl)}, validation set: {len(validation_dl)}, testing set: {len(test_dl)}")
+    print(
+        f"Dataset: {args.data_name}_{args.dataloader_mode}, training set: {len(train_dl)}, validation set: {len(validation_dl)}, testing set: {len(test_dl)}")
     ### 3) Training phase
     ##
     if args.mode == "train":
@@ -114,91 +115,89 @@ def main(args):
                     )
                     y_spt = y_spt.type(torch.LongTensor).to(device)
                     y_qry = y_qry.type(torch.LongTensor).to(device)
+
+                    if "at" in args.model_name:
+                        accs, loss, accs_r, loss_r = model(x_spt, y_spt, x_qry, y_qry)
+                        train_loss += loss.detach().cpu().numpy()
+                        train_acc += accs
+                        train_loss_r += loss_r.detach().cpu().numpy()
+                        train_acc_r += accs_r
+                    else:
+                        accs, loss = model(x_spt, y_spt, x_qry, y_qry)
+                        train_loss += loss.detach().cpu().numpy()
+                        train_acc += accs
                 else:
                     x, y = batch
                     y = y.type(torch.LongTensor).to(device)
+                    x, y = x.to(device), y.to(device)
 
-                if "at" in args.model_name:
-                    accs, loss, accs_r, loss_r = model(x_spt, y_spt, x_qry, y_qry)
-                    train_loss += loss.detach().cpu().numpy()
-                    train_acc += accs
-                    train_loss_r += loss_r.detach().cpu().numpy()
-                    train_acc_r += accs_r
-                elif args.model_name == "nonfs_classification":
                     accs, loss, accs_r, loss_r = model(x, y)
                     train_loss += loss.detach().cpu().numpy()
                     train_acc += accs
                     train_loss_r += loss_r.detach().cpu().numpy()
                     train_acc_r += accs_r
-                else:
-                    accs, loss = model(x_spt, y_spt, x_qry, y_qry)
-                    train_loss += loss.detach().cpu().numpy()
-                    train_acc += accs
 
-            train_loss /= (i + 1)
-            train_acc /= (i + 1)
-            train_loss_r /= (i + 1)
-            train_acc_r /= (i + 1)
-            if (step + 1) % args.train_period_print == 0:
-                print("Epoch: {} Training Acc: {:.4f} Training Loss: {:.4f} Training Acc Robust: {:.4f} Training Loss Robust: {:.4f}\n".format(step, train_acc, train_loss, train_acc_r, train_loss_r))
-                with open(f"{store_dir}/results.txt", "a") as f:
-                    f.writelines("Epoch: {} Training Acc: {:.4f} Training Loss: {:.4f} Training Acc Robust: {:.4f} Training Loss Robust: {:.4f}\n".format(step, train_acc, train_loss, train_acc_r, train_loss_r))
-                    f.close()
-                ##
-                if not os.path.exists(os.path.join(store_dir, "checkpoints")):
-                    os.makedirs(os.path.join(store_dir, "checkpoints"))
+            train_loss /= args.task_num
+            train_acc /= args.task_num
+            train_loss_r /= args.task_num
+            train_acc_r /= args.task_num
+
+            log_str = f"Epoch: {step} Training Acc: {train_acc:.4f} Training Loss: {train_loss:.4f} Training Acc Robust: {train_acc_r:.4f} Training Loss Robust: {train_loss_r:.4f}\n"
+            print(log_str)
+            with open(f"{store_dir}/results.txt", "a") as f:
+                f.writelines(log_str)
+                f.close()
+
+            if not os.path.exists(os.path.join(store_dir, "checkpoints")):
+                os.makedirs(os.path.join(store_dir, "checkpoints"))
+
+            # Saving training accs and loss
+            train_loss_list.append(train_loss)
+            train_acc_list.append(train_acc)
+            train_loss_r_list.append(train_loss_r)
+            train_acc_r_list.append(train_acc_r)
 
             #### Validation ####
-            if (step + 1) % args.test_period_print == 0:
-                ### Saving training accs and loss
-                train_loss_list.append(train_loss)
-                train_acc_list.append(train_acc)
-                train_loss_r_list.append(train_loss_r)
-                train_acc_r_list.append(train_acc_r)
-                ###
-                val_loss_avg, val_acc_avg, val_loss_r_avg, val_acc_r_avg = 0.0, 0.0, 0.0, 0.0
+            val_loss_avg, val_acc_avg, val_loss_r_avg, val_acc_r_avg = 0.0, 0.0, 0.0, 0.0
 
-                if args.dataloader_mode == "few_shot":
-                    for i, (x_spt, y_spt, x_qry, y_qry) in enumerate(test_dl):
-                        x_spt, y_spt, x_qry, y_qry = (
-                            torch.stack(x_spt, dim=1).to(device),
-                            torch.stack(y_spt, dim=1).to(device),
-                            torch.stack(x_qry, dim=1).to(device),
-                            torch.stack(y_qry, dim=1).to(device),
-                        )
-                        # print(x_spt.shape, y_spt.shape, x_qry.shape, y_qry.shape)
-                        for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(
-                                x_spt, y_spt, x_qry, y_qry):
-                            if "at" in args.model_name:
-                                accs, loss, accs_r, loss_r = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
-                                val_loss += loss.detach().cpu().numpy()
-                                val_acc += accs
-                                val_loss_r += loss_r.detach().cpu().numpy()
-                                val_acc_r += accs_r
-                            else:
-                                accs, loss = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
-                                val_loss += loss.detach().cpu().numpy()
-                                val_acc += accs
-                    else:
-                        for i, (x, y) in enumerate(test_dl):
-                            accs, loss, accs_r, loss_r = model.test(x, y)
-                    val_loss /= x_spt.shape[0]
-                    val_acc /= x_spt.shape[0]
-                    val_loss_r /= x_spt.shape[0]
-                    val_acc_r /= x_spt.shape[0]
+            if args.dataloader_mode == "few_shot":
+                for i, (x_spt, y_spt, x_qry, y_qry) in enumerate(validation_dl):
+                    x_spt, y_spt, x_qry, y_qry = (
+                        torch.stack(x_spt, dim=1).to(device),
+                        torch.stack(y_spt, dim=1).to(device),
+                        torch.stack(x_qry, dim=1).to(device),
+                        torch.stack(y_qry, dim=1).to(device),
+                    )
+                    for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(
+                            x_spt, y_spt, x_qry, y_qry):
+                        if "at" in args.model_name:
+                            accs, loss, accs_r, loss_r = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
+                            val_loss += loss.detach().cpu().numpy()
+                            val_acc += accs
+                            val_loss_r += loss_r.detach().cpu().numpy()
+                            val_acc_r += accs_r
+                        else:
+                            accs, loss = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
+                            val_loss += loss.detach().cpu().numpy()
+                            val_acc += accs
+            else:
+                for i, (x, y) in enumerate(validation_dl):
+                    val_accs, val_loss, val_accs_r, val_loss_r = model.test(x, y)
                     val_loss_avg += val_loss
                     val_acc_avg += val_acc
                     val_loss_r_avg += val_loss_r
                     val_acc_r_avg += val_acc_r
 
-                val_loss_avg /= (i + 1)
-                val_acc_avg /= (i + 1)
-                val_loss_r_avg /= (i + 1)
-                val_acc_r_avg /= (i + 1)
+                val_loss_avg /= args.task_num
+                val_acc_avg /= args.task_num
+                val_loss_r_avg /= args.task_num
+                val_acc_r_avg /= args.task_num
+
                 val_loss_list.append(val_loss_avg)
                 val_acc_list.append(val_acc_avg)
                 val_loss_r_list.append(val_loss_r_avg)
                 val_acc_r_list.append(val_acc_avg)
+
                 #### Save model ######
                 params = {
                     'weight': model.state_dict(),
@@ -218,15 +217,20 @@ def main(args):
                     acc_best = val_acc_avg
                     print("Save best weights !!!")
                     torch.save(params, f"{store_dir}/checkpoints/best_new.pt")
-                print("Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(step, val_loss_avg, val_acc_avg, val_loss_r_avg, val_acc_r_avg)
-                      )
+                print(
+                    "Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(
+                        step, val_loss_avg, val_acc_avg, val_loss_r_avg, val_acc_r_avg)
+                    )
                 with open(f"{store_dir}/results.txt", "a") as f:
-                    f.writelines("Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(step, val_loss_avg, val_acc_avg, val_loss_r_avg, val_acc_r_avg))
+                    f.writelines(
+                        "Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(
+                            step, val_loss_avg, val_acc_avg, val_loss_r_avg, val_acc_r_avg))
                     f.close()
             step += 1
     else:
         #### Testing ####
-        model.load_state_dict(torch.load(args.weight))  ####################### load the best weight ##########################
+        model.load_state_dict(
+            torch.load(args.weight))  ####################### load the best weight ##########################
         if args.adv_attack == "LinfPGD":
             from attack import PGD
             at = PGD(eps=args.adv_attack_eps, sigma=args.adv_attack_alpha, nb_iter=args.adv_attack_iters)
@@ -288,9 +292,9 @@ def main(args):
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
     ### Model
-    # Task 1: "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
+    # Task 1: "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4) "nonfs_classification" (5)
     # Task 2: "metanet_maml_at_gru" (5)  "protonet_at_gru" (6)
-    argparser.add_argument('--model_name', type=str, help='The model name', default="metanet_maml_at")
+    argparser.add_argument('--model_name', type=str, help='The model name', default="nonfs_classification")
     argparser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=1000)
     argparser.add_argument('--meta_lr', type=float, help='meta-level outer learning rate', default=0.001)  # 0.001
     argparser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=0.4)  # 0.4
@@ -304,9 +308,12 @@ if __name__ == '__main__':
 
     ### Data
     argparser.add_argument('--mode', type=str, help='The learning phase', default="train")  # train test
-    argparser.add_argument('--data_name', type=str, help='The data configuration', default="omniglot")  # omniglot cifar10
-    argparser.add_argument('--img_shape', type=tuple, help='The image shape', default=(1, 28, 28))  # omniglot: (1, 28, 28)  cifar10: (3, 32, 32)
-    argparser.add_argument('--dataloader_mode', type=str, help='dataloader mode', default="few_shot")  # few_show, non_few_shot
+    argparser.add_argument('--data_name', type=str, help='The data configuration',
+                           default="omniglot")  # omniglot cifar10
+    argparser.add_argument('--img_shape', type=tuple, help='The image shape',
+                           default=(1, 28, 28))  # omniglot: (1, 28, 28)  cifar10: (3, 32, 32)
+    argparser.add_argument('--dataloader_mode', type=str, help='dataloader mode',
+                           default="non_few_shot")  # few_show, non_few_shot
 
     ### Learning phases
     argparser.add_argument('--epoch', type=int, help='epoch number', default=1000)  # 1000 5000
@@ -321,11 +328,16 @@ if __name__ == '__main__':
     argparser.add_argument('--weight_robust', type=float, help='weight_robust', default=1.0)
 
     ## Adversarial attack
-    argparser.add_argument('--adv_attack_type', type=str, default="white_box", help="The adversarial attack type")  # white_box, black_box
-    argparser.add_argument('--adv_attack', type=str, default="LinfPGD", help="The adversarial attack")  ### None LinfPGD FGSM
-    argparser.add_argument('--adv_attack_eps', type=float, default=32 / 255, help="The adversarial attack pertuabation level value")  # 8/255 16/255 32/255 64/255 128/255 1
-    argparser.add_argument('--adv_attack_alpha', type=float, default=4 / 255, help="The adversarial attack step size value")  # 4/255 16/255 32/255 64/255 128/255 1
-    argparser.add_argument('--adv_attack_iters', type=float, default=7, help="The adversarial attack number of iterations value")  # 7 9 11 13 17 19
+    argparser.add_argument('--adv_attack_type', type=str, default="white_box",
+                           help="The adversarial attack type")  # white_box, black_box
+    argparser.add_argument('--adv_attack', type=str, default="LinfPGD",
+                           help="The adversarial attack")  ### None LinfPGD FGSM
+    argparser.add_argument('--adv_attack_eps', type=float, default=32 / 255,
+                           help="The adversarial attack pertuabation level value")  # 8/255 16/255 32/255 64/255 128/255 1
+    argparser.add_argument('--adv_attack_alpha', type=float, default=4 / 255,
+                           help="The adversarial attack step size value")  # 4/255 16/255 32/255 64/255 128/255 1
+    argparser.add_argument('--adv_attack_iters', type=float, default=7,
+                           help="The adversarial attack number of iterations value")  # 7 9 11 13 17 19
     argparser.add_argument('--adv_defense', type=str, default=None, help="The adversarial defense")  ### None AT  TRADES
     ## Version control
     # argparser.add_argument('--leanrer_version', type=int, default=2, help="leanrer_version") # 1, 2

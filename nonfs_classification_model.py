@@ -44,7 +44,7 @@ class NonFSModel(nn.Module):
         self.adv_iters = args.adv_attack_iters
 
         self.net = Learner(config, args.imgc, args.imgsz)
-        self.meta_optim = optim.Adam(self.net.parameters(), lr=self.meta_lr)
+        self.meta_optim = optim.Adam(self.net.parameters(), lr=self.update_lr)
         self.criterion = nn.CrossEntropyLoss()
 
     def clip_grad_by_norm_(self, grad, max_norm):
@@ -78,27 +78,35 @@ class NonFSModel(nn.Module):
         self.meta_optim.zero_grad()
         out = self.net(x, self.net.parameters(), bn_training=True)
         loss = self.criterion(out, y)
-        acc = predict(out, y)
+
+        _, predicted = torch.max(out, 1)
+        acc = (predicted == y).sum().item()
+        # acc = predict(out, y)
+
         #################
         if need_adv:
             y_adv = at.attack(self.net, self.net.parameters(), x, y)
             out_adv = self.net(y_adv, self.net.parameters(), bn_training=True)
             loss_adv = self.criterion(out, y)
-            acc_adv = predict(out_adv, y)
+
+            _, predicted = torch.max(out_adv, 1)
+            acc_adv = (predicted == y).sum().item()
+            # acc_adv = predict(out_adv, y)
+
             ###
-            loss_total = loss + loss_adv
-            loss_total.backward()
+            # loss_total = loss + loss_adv
+            # loss_total.backward()
         else:
             loss_adv = 0.0
             acc_adv = 0.0
-            loss.backward()
+            # loss.backward()
 
         return acc, loss, acc_adv, loss_adv
 
     def test(self, x, y, need_adv=False):
-        b, c, h, w = x.size()
+
         eps, step = (self.adv_eps, self.adv_iters)
-        at = PGD(eps=eps, sigma=self.adv_alpha, nb_iter=step)  ####################
+        at = PGD(eps=eps, sigma=self.adv_alpha, nb_iter=step)
         ###############################
         self.meta_optim.zero_grad()
         out = self.net(x, self.net.parameters(), bn_training=True)
@@ -106,9 +114,9 @@ class NonFSModel(nn.Module):
         acc = predict(out, y)
         #################
         if need_adv:
-            y_adv = at.attack(self.net, self.net.parameters(), x, y)
-            out_adv = self.net(y_adv, self.net.parameters(), bn_training=True)
-            loss_adv = self.criterion(out, y)
+            x_adv = at.attack(self.net, self.net.parameters(), x, y)
+            out_adv = self.net(x_adv, self.net.parameters(), bn_training=True)
+            loss_adv = self.criterion(out_adv, y)
             acc_adv = predict(out_adv, y)
             ###
             loss_total = loss + loss_adv
