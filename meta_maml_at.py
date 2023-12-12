@@ -39,7 +39,7 @@ class Meta(nn.Module):
         self.adv_eps = args.adv_attack_eps
         self.adv_alpha = args.adv_attack_alpha
         self.adv_iters = args.adv_attack_iters
-
+        self.weight_robust = args.weight_robust
         self.net = Learner(config, args.imgc, args.imgsz)
         # self.netadv = Learner(config, args.imgc, args.imgsz)
         self.meta_optim = optim.Adam(self.net.parameters(), lr=self.meta_lr)
@@ -215,7 +215,7 @@ class Meta(nn.Module):
         loss_q_adv = losses_q_adv[-1] / task_num
 
         ############# main loss to backward ######################
-        loss_total = loss_q + loss_q_adv
+        loss_total = loss_q + self.weight_robust * loss_q_adv
         ###########################################################
         # optimize theta parameters
         self.meta_optim.zero_grad()

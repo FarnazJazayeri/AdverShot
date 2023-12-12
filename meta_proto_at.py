@@ -126,6 +126,7 @@ class Meta(nn.Module):
         self.adv_eps = args.adv_attack_eps
         self.adv_alpha = args.adv_attack_alpha
         self.adv_iters = args.adv_attack_iters
+        self.weight_robust = args.weight_robust
 
         self.net = Learner(config, args.imgc, args.imgsz)
         self.meta_optim = optim.Adam(self.net.parameters(), lr=self.meta_lr)
@@ -193,7 +194,7 @@ class Meta(nn.Module):
             correct_q_adv += acc_adv
             ##############
             # loss.backward()
-            loss_total = loss + loss_adv
+            loss_total = loss + self.weight_robust*loss_adv
             loss_total.backward()
             self.meta_optim.step()
             # train_loss.append(loss.item())
@@ -218,6 +219,8 @@ class Meta(nn.Module):
         out_qry = self.net(x_qry, self.net.parameters(), bn_training=True)
         loss, acc = prototypical_loss(out_spt, y_spt, out_qry, y_qry)
         ####### robust ##########
+        eps, step = (self.adv_eps, self.adv_iters)
+        at = PGD(eps=eps, sigma=self.adv_alpha, nb_iter=step)  ####################
         out_qry_adv = at.attack(self.net, self.net.parameters(), x_qry, y_qry,
                                 extra_params=dict(x_spt=x_spt, y_spt=y_spt))
         out_qry_adv = self.net(out_qry_adv, self.net.parameters(), bn_training=True)
