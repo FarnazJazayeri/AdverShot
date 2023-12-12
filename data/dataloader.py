@@ -65,7 +65,7 @@ class MyDataLoader:
         elif name == "cifar10":
             from torchvision.datasets import CIFAR10
 
-            return CIFAR10(*args, **kwargs)
+            return CIFAR10('./dataset', *args, **kwargs)
         elif name == "cifar100":
             from torchvision.datasets import CIFAR100
 
