@@ -203,7 +203,7 @@ class Meta(nn.Module):
         loss_q_adv /= task_num
         correct_q_adv /= task_num
 
-        return loss_q, correct_q
+        return correct_q, loss_q, correct_q_adv, loss_q_adv
 
     def test(self, x_spt, y_spt, x_qry, y_qry, need_adv=False):
         """
@@ -217,5 +217,11 @@ class Meta(nn.Module):
         out_spt = self.net(x_spt, self.net.parameters(), bn_training=True)
         out_qry = self.net(x_qry, self.net.parameters(), bn_training=True)
         loss, acc = prototypical_loss(out_spt, y_spt, out_qry, y_qry)
+        ####### robust ##########
+        out_qry_adv = at.attack(self.net, self.net.parameters(), x_qry, y_qry,
+                                extra_params=dict(x_spt=x_spt, y_spt=y_spt))
+        out_qry_adv = self.net(out_qry_adv, self.net.parameters(), bn_training=True)
+        loss_adv, acc_adv = prototypical_loss(out_spt, y_spt, out_qry_adv, y_qry)
+        ###################
 
-        return loss, acc
+        return acc, loss, acc_adv, loss_adv

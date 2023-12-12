@@ -68,7 +68,7 @@ class Meta(nn.Module):
 
         return total_norm / counter
 
-    def forward(self, x_spt, y_spt, x_qry, y_qry):
+    def forward(self, x_spt, y_spt, x_qry, y_qry, need_adv=True):
         """
         :param x_spt:   [b, setsz, c_, h, w]
         :param y_spt:   [b, setsz]
@@ -82,7 +82,6 @@ class Meta(nn.Module):
         losses_q = [0 for _ in range(self.update_step + 1)]  # losses_q[i] is the loss on step i
         corrects = [0 for _ in range(self.update_step + 1)]
 
-        need_adv = True
         # AT
         optimizer = torch.optim.SGD(self.net.parameters(), lr=self.update_lr, momentum=0.9, weight_decay=5e-4)
         eps, step = (self.adv_eps, self.adv_iters)
@@ -232,11 +231,12 @@ class Meta(nn.Module):
         #         self.meta_optim.step()
 
         accs = np.array(corrects) / (querysz * task_num)
+        accs = accs[-1]
         accs_adv = np.array(corrects_adv) / (querysz * task_num)
+        accs_adv = accs_adv[-1]
+        return accs, loss_q, accs_adv, loss_q_adv
 
-        return accs, accs_adv
-
-    def test(self, x_spt, y_spt, x_qry, y_qry):
+    def test(self, x_spt, y_spt, x_qry, y_qry, need_adv=True):
         """
         :param x_spt:   [setsz, c_, h, w]
         :param y_spt:   [setsz]
@@ -250,7 +250,6 @@ class Meta(nn.Module):
 
         corrects = [0 for _ in range(self.update_step_test + 1)]
 
-        need_adv = True
         optimizer = torch.optim.SGD(self.net.parameters(), lr=self.update_lr, momentum=0.9, weight_decay=5e-4)
         eps, step = (self.adv_eps, self.adv_iters)
         corrects_adv = [0 for _ in range(self.update_step_test + 1)]
@@ -381,12 +380,13 @@ class Meta(nn.Module):
         del net
 
         accs = np.array(corrects) / querysz
-
+        accs = accs[-1]
         accs_adv = np.array(corrects_adv) / querysz
-
+        accs_adv = accs_adv[-1]
         accs_adv_prior = np.array(corrects_adv_prior)
 
-        return accs, accs_adv, accs_adv_prior
+        return accs, loss_q, accs_adv, loss_q_adv
+        # return accs, accs_adv, accs_adv_prior
 
 
 def main():

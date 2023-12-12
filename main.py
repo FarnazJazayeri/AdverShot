@@ -100,102 +100,132 @@ def main(args):
         ##
         acc_best = 0.0
         acc_test = 0.0
+        val_loss_list, val_acc_list, train_loss_list, train_acc_list = [], [], [], []
+        val_loss_r_list, val_acc_r_list, train_loss_r_list, train_acc_r_list = [], [], [], []
         step = 0
         while step < args.epoch:
-            for i, (x_spt, y_spt, x_qry, y_qry) in enumerate(train_dl):
+            val_loss, val_acc, train_loss, train_acc = 0.0, 0.0, 0.0, 0.0
+            val_loss_r, val_acc_r, train_loss_r, train_acc_r = 0.0, 0.0, 0.0, 0.0
 
-                x_spt, y_spt, x_qry, y_qry = (
-                    torch.stack(x_spt, dim=1).to(device),
-                    torch.stack(y_spt, dim=1).to(device),
-                    torch.stack(x_qry, dim=1).to(device),
-                    torch.stack(y_qry, dim=1).to(device),
-                )
-                #print(i, x_spt.shape, x_qry.shape)
-                y_spt = y_spt.type(torch.LongTensor).to(device)
-                y_qry = y_qry.type(torch.LongTensor).to(device)
-                if args.model_name == "metanet_maml_at":
-                    accs, accs_adv = model(x_spt, y_spt, x_qry, y_qry)
-                elif args.model_name == "generic_protonet" or args.model_name == "protonet_at":
-                    loss, accs = model(x_spt, y_spt, x_qry, y_qry)
+            # for i, (x_spt, y_spt, x_qry, y_qry) in enumerate(train_dl):
+            for i, batch in enumerate(train_dl):
+                if args.dataloader_mode == "few_shot":
+                    x_spt, y_spt, x_qry, y_qry = batch
+                    x_spt, y_spt, x_qry, y_qry = (
+                        torch.stack(x_spt, dim=1).to(device),
+                        torch.stack(y_spt, dim=1).to(device),
+                        torch.stack(x_qry, dim=1).to(device),
+                        torch.stack(y_qry, dim=1).to(device),
+                    )
+                    # print(i, x_spt.shape, x_qry.shape)
+                    y_spt = y_spt.type(torch.LongTensor).to(device)
+                    y_qry = y_qry.type(torch.LongTensor).to(device)
                 else:
-                    accs = model(x_spt, y_spt, x_qry, y_qry)
+                    x, y = batch
+                    y = y.type(torch.LongTensor).to(device)
+                # if args.model_name == "metanet_maml_at":
+                #    accs, accs_adv = model(x_spt, y_spt, x_qry, y_qry)
+                # elif args.model_name == "generic_protonet" or args.model_name == "protonet_at":
+                #    loss, accs = model(x_spt, y_spt, x_qry, y_qry)
 
-                if (step + 1) % args.train_period_print == 0:
-                    print("Epoch: {} Training Acc: {}\n".format(step, accs))
-                    with open(f"{store_dir}/results.txt", "a") as f:
-                        f.writelines("Epoch: {} Training Acc: {}\n".format(step, accs))
-                        f.close()
+                if "at" in args.model_name:
+                    accs, loss, accs_r, loss_r = model(x_spt, y_spt, x_qry, y_qry)
+                    train_loss += loss.detach().cpu().numpy()
+                    train_acc += accs
+                    train_loss_r += loss_r.detach().cpu().numpy()
+                    train_acc_r += accs_r
+                else:
+                    accs, loss = model(x_spt, y_spt, x_qry, y_qry)
+                    train_loss += loss.detach().cpu().numpy()
+                    train_acc += accs
 
+            train_loss /= (i + 1)
+            train_acc /= (i + 1)
+            train_loss_r /= (i + 1)
+            train_acc_r /= (i + 1)
+            if (step + 1) % args.train_period_print == 0:
+                print("Epoch: {} Training Acc: {:.4f} Training Loss: {:.4f} Training Acc Robust: {:.4f} Training Loss Robust: {:.4f}\n".format(step, train_acc, train_loss, train_acc_r, train_loss_r))
+                with open(f"{store_dir}/results.txt", "a") as f:
+                    f.writelines("Epoch: {} Training Acc: {:.4f} Training Loss: {:.4f} Training Acc Robust: {:.4f} Training Loss Robust: {:.4f}\n".format(step, train_acc, train_loss, train_acc_r, train_loss_r))
+                    f.close()
                 ##
                 if not os.path.exists(os.path.join(store_dir, "checkpoints")):
                     os.makedirs(os.path.join(store_dir, "checkpoints"))
-                ##
 
-                #### Testing ####
-                if (step + 1) % args.test_period_print == 0:
-                    acc_test = 0.0
-                    torch.save(model.state_dict(), f"{store_dir}/checkpoints/last.pt")
-                    accs = []
-                    acc_test_avg = 0.0
-                    for i, (x_spt, y_spt, x_qry, y_qry) in enumerate(test_dl):
-                        x_spt, y_spt, x_qry, y_qry = (
-                            torch.stack(x_spt, dim=1).to(device),
-                            torch.stack(y_spt, dim=1).to(device),
-                            torch.stack(x_qry, dim=1).to(device),
-                            torch.stack(y_qry, dim=1).to(device),
-                        )
-                        for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(
-                                x_spt, y_spt, x_qry, y_qry
-                        ):
-                            # print("------------------------", x_spt_one.shape) # torch.Size([5, 1, 28, 28])
-                            # if args.model_name == "metanet_maml_at":
-                            if "maml_at" in args.model_name:
-                                test_acc, accs_adv, accs_adv_prior = model.test(
-                                    x_spt_one, y_spt_one, x_qry_one, y_qry_one
-                                )
-                            elif (
-                                    args.model_name == "generic_metanet"
-                                    or args.model_name == "resnet18_maml"
-                            ):
-                                test_acc = model.test(
-                                    x_spt_one, y_spt_one, x_qry_one, y_qry_one
-                                )
-                            else:
-                                test_loss, test_acc = model.test(
-                                    x_spt_one, y_spt_one, x_qry_one, y_qry_one
-                                )
-                            accs.append(test_acc)
-                            # if args.model_name == "protonet_at" or args.model_name == "generic_protonet":
-                            if "protonet" in args.model_name:
-                                acc_test += test_acc
-                            else:
-                                acc_test += test_acc[-1]
-                        acc_test /= args.task_num
-                        acc_test_avg += acc_test
-                    # [b, update_step+1]
-                    acc_test_avg /= args.test_size
-                    # print(type(accs), accs)
-                    if acc_test >= acc_best:
-                        acc_best = acc_test
-                        print("Save best weights !!!")
-                        torch.save(
-                            model.state_dict(), f"{store_dir}/checkpoints/best_new.pt"
-                        )
-                        # accs = np.array(accs).mean(axis=0).astype(np.float16)
-                    print(
-                        "Epoch: {} Testing Acc: {}, Best Acc: {} \n".format(
-                            step, acc_test, acc_test_avg
-                        )
+            #### Validation ####
+            if (step + 1) % args.test_period_print == 0:
+                ### Saving training accs and loss
+                train_loss_list.append(train_loss)
+                train_acc_list.append(train_acc)
+                train_loss_r_list.append(train_loss_r)
+                train_acc_r_list.append(train_acc_r)
+                ###
+                val_loss_avg, val_acc_avg, val_loss_r_avg, val_acc_r_avg = 0.0, 0.0, 0.0, 0.0
+                for i, (x_spt, y_spt, x_qry, y_qry) in enumerate(test_dl):
+                    x_spt, y_spt, x_qry, y_qry = (
+                        torch.stack(x_spt, dim=1).to(device),
+                        torch.stack(y_spt, dim=1).to(device),
+                        torch.stack(x_qry, dim=1).to(device),
+                        torch.stack(y_qry, dim=1).to(device),
                     )
-                    with open(f"{store_dir}/results.txt", "a") as f:
-                        f.writelines(
-                            "Epoch: {} Testing Acc: {}, Best Acc: {} \n".format(
-                                step, acc_test, acc_test_avg
-                            )
-                        )
-                        f.close()
-                    acc_test = 0.0
-                step += 1
+                    #print(x_spt.shape, y_spt.shape, x_qry.shape, y_qry.shape)
+                    for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(
+                            x_spt, y_spt, x_qry, y_qry):
+                        # torch.Size([5, 1, 28, 28]) torch.Size([5]) torch.Size([25, 1, 28, 28]) torch.Size([25])
+                        #print(x_spt_one.shape, y_spt_one.shape, x_qry_one.shape, y_qry_one.shape)
+                        #x_spt_one, y_spt_one, x_qry_one, y_qry_one = x_spt_one.to(device), y_spt_one.to(device), x_qry_one.to(device), y_qry_one.to(device)
+                        if "at" in args.model_name:
+                            accs, loss, accs_r, loss_r = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
+                            val_loss += loss.detach().cpu().numpy()
+                            val_acc += accs
+                            val_loss_r += loss_r.detach().cpu().numpy()
+                            val_acc_r += accs_r
+                        else:
+                            accs, loss = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
+                            val_loss += loss.detach().cpu().numpy()
+                            val_acc += accs
+                    val_loss /= x_spt.shape[0]
+                    val_acc /= x_spt.shape[0]
+                    val_loss_r /= x_spt.shape[0]
+                    val_acc_r /= x_spt.shape[0]
+                    val_loss_avg += val_loss
+                    val_acc_avg += val_acc
+                    val_loss_r_avg += val_loss_r
+                    val_acc_r_avg += val_acc_r
+
+                val_loss_avg /= (i + 1)
+                val_acc_avg /= (i + 1)
+                val_loss_r_avg /= (i + 1)
+                val_acc_r_avg /= (i + 1)
+                val_loss_list.append(val_loss_avg)
+                val_acc_list.append(val_acc_avg)
+                val_loss_r_list.append(val_loss_r_avg)
+                val_acc_r_list.append(val_acc_avg)
+                #### Save model ######
+                params = {
+                    'weight': model.state_dict(),
+                    'epoch': step,
+                    'train_loss': train_loss_list,
+                    'train_acc': train_acc_list,
+                    'train_loss_r': train_loss_r_list,
+                    'train_acc_r': train_acc_r_list,
+                    'val_loss': val_loss_list,
+                    'val_acc': val_acc_list,
+                    'val_loss_r': val_loss_r_list,
+                    'val_acc_r': val_acc_r_list,
+                }
+                ######################
+                torch.save(params, f"{store_dir}/checkpoints/last.pt")
+                if val_acc_avg >= acc_best:
+                    acc_best = val_acc_avg
+                    print("Save best weights !!!")
+                    torch.save(params, f"{store_dir}/checkpoints/best_new.pt")
+                print("Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(step, val_loss_avg, val_acc_avg, val_loss_r_avg, val_acc_r_avg)
+                      )
+                with open(f"{store_dir}/results.txt", "a") as f:
+                    f.writelines("Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(step, val_loss_avg, val_acc_avg, val_loss_r_avg, val_acc_r_avg))
+                    f.close()
+            step += 1
     else:
         #### Testing ####
         model.load_state_dict(torch.load(args.weight))  ####################### load the best weight ##########################
@@ -262,14 +292,14 @@ if __name__ == '__main__':
     ### Model
     # Task 1: "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
     # Task 2: "metanet_maml_at_gru" (5)  "protonet_at_gru" (6)
-    argparser.add_argument('--model_name', type=str, help='The model name', default="protonet_at")
+    argparser.add_argument('--model_name', type=str, help='The model name', default="metanet_maml_at")
     argparser.add_argument('--epoch', type=int, help='epoch number', default=1000)  # 1000 5000
     argparser.add_argument('--n_way', type=int, help='n way', default=5)
     argparser.add_argument('--k_spt', type=int, help='k shot for support set', default=1)
     argparser.add_argument('--k_qry', type=int, help='k shot for query set', default=5)
     argparser.add_argument('--imgsz', type=int, help='imgsz', default=28)
     argparser.add_argument('--imgc', type=int, help='imgc', default=1)
-    argparser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=2000)
+    argparser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=1000)
     argparser.add_argument('--meta_lr', type=float, help='meta-level outer learning rate', default=0.001)  # 0.001
     argparser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=0.4)  # 0.4
     argparser.add_argument('--update_step', type=int, help='task-level inner update steps', default=5)
@@ -286,7 +316,7 @@ if __name__ == '__main__':
     argparser.add_argument('--dataloader_mode', type=str, help='dataloader mode', default="few_shot")  # few_show, non_few_shot
 
     ### Learning phases
-    argparser.add_argument('--train_period_print', type=int, help='train_period_print', default=20)
+    argparser.add_argument('--train_period_print', type=int, help='train_period_print', default=5)
     argparser.add_argument('--test_period_print', type=int, help='test_period_print', default=5)
     argparser.add_argument('--test_size', type=int, help='test_size', default=5)
     ## Adversarial attack
@@ -301,4 +331,3 @@ if __name__ == '__main__':
     args = argparser.parse_args()
 
     main(args)
-

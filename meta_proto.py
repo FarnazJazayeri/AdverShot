@@ -182,7 +182,7 @@ class Meta(nn.Module):
         loss_q /= task_num
         correct_q /= task_num
 
-        return loss_q, correct_q
+        return correct_q, loss_q
 
     def test(self, x_spt, y_spt, x_qry, y_qry, need_adv = False):
         """
@@ -197,4 +197,4 @@ class Meta(nn.Module):
         out_qry = self.net(x_qry, self.net.parameters(), bn_training=True)
         loss, acc = prototypical_loss(out_spt, y_spt, out_qry, y_qry)
 
-        return loss, acc
+        return acc, loss

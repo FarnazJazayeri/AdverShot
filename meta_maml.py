@@ -127,8 +127,6 @@ class Meta(nn.Module):
                     correct = torch.eq(pred_q, y_qry[i]).sum().item()  # convert to numpy
                     corrects[k + 1] = corrects[k + 1] + correct
 
-
-
         # end of all tasks
         # sum over all losses on query set across all tasks
         loss_q = losses_q[-1] / task_num
@@ -143,8 +141,8 @@ class Meta(nn.Module):
 
 
         accs = np.array(corrects) / (querysz * task_num)
-
-        return accs
+        accs = accs[-1]
+        return accs, loss_q
 
 
     def test(self, x_spt, y_spt, x_qry, y_qry):
@@ -213,8 +211,9 @@ class Meta(nn.Module):
         del net
 
         accs = np.array(corrects) / querysz
+        accs = accs[-1]
 
-        return accs
+        return accs, loss_q
 
 
 
@@ -225,4 +224,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
