@@ -33,9 +33,9 @@ class MyDataLoader:
 
     def make_few_shot_dataloaders(self, dataset):
         train_dataset, validation_dataset, test_dataset = self._random_split(dataset)
-        train_few_shot_dataset = self.make_few_shot_dataset(train_dataset)
-        validation_few_shot_dataset = self.make_few_shot_dataset(validation_dataset, num_tasks=200)
-        test_few_shot_dataset = self.make_few_shot_dataset(test_dataset, num_tasks=200)
+        train_few_shot_dataset = self.make_few_shot_dataset(train_dataset, num_tasks=self.num_tasks)
+        validation_few_shot_dataset = self.make_few_shot_dataset(validation_dataset, num_tasks=self.num_tasks)
+        test_few_shot_dataset = self.make_few_shot_dataset(test_dataset, num_tasks=self.num_tasks)
 
         train_few_shot_dataloader = DataLoader(train_few_shot_dataset, batch_size=64, shuffle=True)
         validation_few_shot_dataloader = DataLoader(validation_few_shot_dataset, batch_size=64, shuffle=False)

@@ -1,6 +1,9 @@
 /*/dataset/
 .idea
 *.pyc
-/dataset/
-/*/omniglot
-/omniglot/
+**/dataset/
+**/omniglot
+**/cifar10/
+**/cifar100/
+**/mnist/
+

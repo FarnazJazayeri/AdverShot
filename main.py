@@ -28,24 +28,18 @@ def main(args):
         from meta_proto_at import Meta
     elif args.model_name == "nonfs_classification":
         from nonfs_classification_model import NonFSModel
-        pass
 
     ### 1) Model
     if args.model_name == "generic_metanet" or args.model_name == "metanet_maml_at":
-        # from config import config_maml
-        # config = config_maml
         config = create_config(num_layers=args.num_layers,
                                hidden_channel=args.hidden_channel, out_channel=args.n_way,
                                img_shape=args.img_shape, gate_rnr=False)
         model = Meta(args, config).to(device)
     elif args.model_name == "generic_protonet" or args.model_name == "protonet_at":
-        # from config import config_proto
-        # config = config_proto
         config = create_config(num_layers=args.num_layers,
                                hidden_channel=args.hidden_channel, out_channel=args.emb_channel,
                                img_shape=args.img_shape, gate_rnr=False)
         model = Meta(args, config).to(device)
-
     elif args.model_name == "nonfs_classification":
         config = create_config(num_layers=args.num_layers,
                                hidden_channel=args.hidden_channel, out_channel=args.n_way,
@@ -102,7 +96,6 @@ def main(args):
             os.makedirs(store_dir, exist_ok=True)
         ##
         acc_best = 0.0
-        acc_test = 0.0
         val_loss_list, val_acc_list, train_loss_list, train_acc_list = [], [], [], []
         val_loss_r_list, val_acc_r_list, train_loss_r_list, train_acc_r_list = [], [], [], []
         step = 0
@@ -110,7 +103,6 @@ def main(args):
             val_loss, val_acc, train_loss, train_acc = 0.0, 0.0, 0.0, 0.0
             val_loss_r, val_acc_r, train_loss_r, train_acc_r = 0.0, 0.0, 0.0, 0.0
 
-            # for i, (x_spt, y_spt, x_qry, y_qry) in enumerate(train_dl):
             for i, batch in enumerate(train_dl):
                 if args.dataloader_mode == "few_shot":
                     x_spt, y_spt, x_qry, y_qry = batch
@@ -120,7 +112,6 @@ def main(args):
                         torch.stack(x_qry, dim=1).to(device),
                         torch.stack(y_qry, dim=1).to(device),
                     )
-                    # print(i, x_spt.shape, x_qry.shape)
                     y_spt = y_spt.type(torch.LongTensor).to(device)
                     y_qry = y_qry.type(torch.LongTensor).to(device)
                 else:
@@ -305,9 +296,9 @@ if __name__ == '__main__':
     argparser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=0.4)  # 0.4
     argparser.add_argument('--update_step', type=int, help='task-level inner update steps', default=5)
     argparser.add_argument('--update_step_test', type=int, help='update steps for finetunning', default=10)
-    argparser.add_argument('--hidden_channel', type=int, help='hidden_channel', default=128)  # 64 128
+    argparser.add_argument('--hidden_channel', type=int, help='hidden_channel', default=64)  # 64 128
     argparser.add_argument('--emb_channel', type=int, help='emb_channel', default=64)  # 64
-    argparser.add_argument('--num_layers', type=int, help='The number of layers', default=3)
+    argparser.add_argument('--num_layers', type=int, help='The number of layers', default=2)
     argparser.add_argument('--weight', type=str, help='The learning phase', default=None)
     argparser.add_argument('--store_dir', type=str, help='The learning phase', default=None)
 
@@ -324,7 +315,7 @@ if __name__ == '__main__':
     argparser.add_argument('--k_qry', type=int, help='k shot for query set', default=5)
     argparser.add_argument('--imgsz', type=int, help='imgsz', default=28)
     argparser.add_argument('--imgc', type=int, help='imgc', default=1)
-    argparser.add_argument('--train_period_print', type=int, help='train_period_print', default=5)
+    argparser.add_argument('--train_period_print', type=int, help='train_period_print', default=1)
     argparser.add_argument('--test_period_print', type=int, help='test_period_print', default=5)
     argparser.add_argument('--test_size', type=int, help='test_size', default=5)
     argparser.add_argument('--weight_robust', type=float, help='weight_robust', default=1.0)
