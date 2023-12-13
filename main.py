@@ -118,7 +118,6 @@ def main(args):
 
             # for i, (x_spt, y_spt, x_qry, y_qry) in enumerate(train_dl):
             for i, batch in enumerate(train_dl):
-                #print(i)
                 if args.dataloader_mode == "few_shot":
                     x_spt, y_spt, x_qry, y_qry = batch
                     x_spt, y_spt, x_qry, y_qry = (
@@ -255,63 +254,88 @@ def main(args):
             step += 1
     else:
         #### Testing ####
-        model.load_state_dict(torch.load(args.weight))  ####################### load the best weight ##########################
+        try:
+            model.load_state_dict(torch.load(args.weight))  ####################### load the best weight ##########################
+        except:
+            params = torch.load(args.weight)
+            model.load_state_dict(torch.load(params['weight']))
         if args.adv_attack == "LinfPGD":
             from attack import PGD
             at = PGD(eps=args.adv_attack_eps, sigma=args.adv_attack_alpha, nb_iter=args.adv_attack_iters)
         else:
             at = None
-        accs = []
-        acc_test = 0.0
-        acc_test_avg = 0.0
-        for i, (x_spt, y_spt, x_qry, y_qry) in enumerate(test_dl):
-            # test
-            x_spt, y_spt, x_qry, y_qry = (
-                torch.stack(x_spt, dim=1).to(device),
-                torch.stack(y_spt, dim=1).to(device),
-                torch.stack(x_qry, dim=1).to(device),
-                torch.stack(y_qry, dim=1).to(device),
-            )
-            # print("--------------", x_spt.shape, x_qry.shape) # -------------- torch.Size([32, 5, 1, 28, 28]) torch.Size([32, 25, 1, 28, 28])
-
-            # split to single task each time
-            for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(x_spt, y_spt, x_qry, y_qry):
-
-                # print("-----------------", x_spt_one.max(), x_qry_one.max()) # ----------------- tensor(1., device='cuda:0') tensor(1., device='cuda:0')
-
-                if args.adv_attack == "LinfPGD":
-                    # x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one)
-
-                    if args.model_name == "protonet_at" or args.model_name == "generic_protonet":
-                        x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one,
-                                              extra_params=dict(x_spt=x_spt_one, y_spt=y_spt_one))
+        test_loss_list, test_acc_list, test_loss_r_list, test_acc_r_list = [], [], [], []
+        test_loss, test_acc, test_loss_r, test_acc_r = 0.0, 0.0, 0.0, 0.0
+        test_loss_avg, test_acc_avg, test_loss_r_avg, test_acc_r_avg = 0.0, 0.0, 0.0, 0.0
+        if args.dataloader_mode == "few_shot":
+            for i, (x_spt, y_spt, x_qry, y_qry) in enumerate(test_dl):
+                x_spt, y_spt, x_qry, y_qry = (
+                    torch.stack(x_spt, dim=1).to(device),
+                    torch.stack(y_spt, dim=1).to(device),
+                    torch.stack(x_qry, dim=1).to(device),
+                    torch.stack(y_qry, dim=1).to(device),
+                )
+                for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(
+                        x_spt, y_spt, x_qry, y_qry):
+                    ###
+                    if args.adv_attack == "LinfPGD":
+                        # x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one)
+                        if args.model_name == "protonet_at" or args.model_name == "generic_protonet":
+                            x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one,
+                                                  extra_params=dict(x_spt=x_spt_one, y_spt=y_spt_one))
+                        else:
+                            x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one)
+                    ###
+                    if "_at" in args.model_name:
+                        accs, loss, accs_r, loss_r = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
+                        test_loss += loss.detach().cpu().numpy()
+                        test_acc += accs
+                        test_loss_r += loss_r.detach().cpu().numpy()
+                        test_acc_r += accs_r
                     else:
-                        x_qry_one = at.attack(model.net, model.net.parameters(), x_qry_one, y_qry_one)
+                        accs, loss = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
+                        test_loss += loss.detach().cpu().numpy()
+                        test_acc += accs
+                test_loss /= x_spt.shape[0]
+                test_acc /= x_spt.shape[0]
+                test_loss_r /= x_spt.shape[0]
+                test_acc_r /= x_spt.shape[0]
+                test_loss_avg += test_loss
+                test_acc_avg += test_acc
+                test_loss_r_avg += test_loss_r
+                test_acc_r_avg += test_acc_r
+        else:
+            for i, (x, y) in enumerate(test_dl):
+                x = x.to(device)
+                y = y.type(torch.LongTensor).to(device)
+                ###
+                if args.adv_attack == "LinfPGD":
+                    x = at.attack(model.net, model.net.parameters(), x, y)
+                ###
+                accs, loss, accs_r, loss_r = model.test(x, y)
+                test_loss_avg += loss
+                test_acc_avg += accs
+                test_loss_r_avg += loss_r
+                test_acc_r_avg += accs_r
 
-                if args.model_name == "metanet_maml_at" or args.model_name == "resnet18_maml_at":
-                    test_acc, accs_adv, accs_adv_prior = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
-                elif args.model_name == "generic_metanet" or args.model_name == "resnet18_maml":
+            test_loss_avg /= (i + 1)
+            test_acc_avg /= (i + 1)
+            test_loss_r_avg /= (i + 1)
+            test_acc_r_avg /= (i + 1)
+            test_loss_list.append(test_loss_avg)
+            test_acc_list.append(test_acc_avg)
+            test_loss_r_list.append(test_loss_r_avg)
+            test_acc_r_list.append(test_acc_avg)
 
-                    test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
-                else:
-                    test_loss, test_acc = model.test(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
-                accs.append(test_acc)
-                # if args.model_name == "protonet_at" or args.model_name == "generic_protonet":
-                if "protonet" in args.model_name:
-                    acc_test += test_acc
-                else:
-                    acc_test += test_acc[-1]
-            acc_test /= args.task_num
-            acc_test_avg += acc_test
-
-            print(f"Epoch: {i}, test acc: {acc_test}")
+            print(f"Epoch: {i}, test acc: {test_acc_avg} test loss {test_loss_avg}")
             with open(f"{os.path.dirname(args.weight)}/results_test.txt", 'a') as f:
-                f.writelines(f"Epoch: {i}, test acc: {acc_test} \n")
-            acc_test = 0.0
-        acc_test_avg /= 100
-        print(f"Test acc avg: {acc_test_avg}")
+                f.writelines(f"Epoch: {i}, test acc: {test_acc_avg} test loss {test_loss_avg} \n")
+        total_acc_avg = sum(test_acc_list) / len(test_acc_list)
+        total_loss_avg = sum(test_loss_list) / len(test_loss_list)
+        print(f"Avg test acc: {total_acc_avg}  avg test loss {total_loss_avg}")
         with open(f"{os.path.dirname(args.weight)}/results_test.txt", 'a') as f:
-            f.writelines(f"Test acc avg: {acc_test_avg}")
+            f.writelines(f"Test acc avg: {total_acc_avg} \n")
+            f.writelines(f"Test loss avg: {total_loss_avg} \n")
 
 
 if __name__ == '__main__':
