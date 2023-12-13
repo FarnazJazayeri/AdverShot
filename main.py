@@ -1,6 +1,6 @@
 import torch, os
 import numpy as np
-from data.dataloader import MyDataLoader
+from data.dataloader import DataProvider
 import argparse
 import datetime
 import datetime
@@ -63,7 +63,7 @@ def main(args):
     print('Total trainable tensors:', num)
 
     ### 2) Dataloader
-    dataloader = MyDataLoader(
+    dataloader = DataProvider(
         num_tasks=args.task_num,
         n_way=args.n_way,
         k_shot_spt=args.k_spt,
