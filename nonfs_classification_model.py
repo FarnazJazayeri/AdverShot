@@ -75,7 +75,7 @@ class NonFSModel(nn.Module):
         need_adv = self.at
         b, c, h, w = x.size()
         eps, step = (self.adv_eps, self.adv_iters)
-        at = PGD(eps=eps, sigma=self.adv_alpha, nb_iter=step)  ####################
+        at = PGD(eps=eps, sigma=self.adv_alpha, nb_iter=step)
         ###############################
         self.meta_optim.zero_grad()
         out = self.net(x, self.net.parameters(), bn_training=True)
