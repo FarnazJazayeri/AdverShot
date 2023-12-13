@@ -69,11 +69,11 @@ class MyDataLoader:
         elif name == "cifar100":
             from torchvision.datasets import CIFAR100
 
-            return CIFAR100(*args, **kwargs)
+            return CIFAR100('./dataset/', *args, **kwargs)
         elif name == "mnist":
             from torchvision.datasets import MNIST
 
-            return MNIST(*args, **kwargs)
+            return MNIST('./dataset/', *args, **kwargs)
         else:
             raise ValueError(f"Unknown dataset {name}")
 

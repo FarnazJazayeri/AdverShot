@@ -73,9 +73,10 @@ def main(args):
     if args.dataloader_mode == "few_shot":
         train_dl, validation_dl, test_dl = dataloader.load_few_shot_dataset(args.data_name)
     else:
-        train_dl, validation_dl, test_dl = dataloader.load_dataset(args.data_name)
+        train_dl, validation_dl, test_dl, data_len = dataloader.load_dataset(args.data_name)
 
     print(f"Dataset: {args.data_name}_{args.dataloader_mode}, training set: {len(train_dl)}, validation set: {len(validation_dl)}, testing set: {len(test_dl)}")
+
     ### 3) Training phase
     if args.mode == "train":
         current_datetime = datetime.datetime.now()
@@ -136,7 +137,6 @@ def main(args):
                 train_loss_r /= (i + 1)
                 train_acc_r /= (i + 1)
             else:
-                print(i)
                 print(data_len[0])
                 train_loss /= data_len[0]
                 train_acc /= data_len[0]
