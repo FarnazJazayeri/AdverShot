@@ -101,10 +101,10 @@ def main(args):
         if args.store_dir is not None:
             store_dir = args.store_dir
         else:
-            if args.adv_defense is None:
+            if "_at" not in args.model_name:
                 store_dir = f"experiments/{args.data_name}/{args.model_name}/l{args.num_layers}_h{args.hidden_channel}"
             else:
-                store_dir = f"experiments/{args.data_name}/{args.model_name}_{args.adv_defense}/l{args.num_layers}_h{args.hidden_channel}"
+                store_dir = f"experiments/{args.data_name}/{args.model_name}_{args.adv_defense}/l{args.num_layers}_h{args.hidden_channel}_r{str(args.weight_robust)}"
             os.makedirs(store_dir, exist_ok=True)
         ##
         acc_best = 0.0
@@ -188,6 +188,7 @@ def main(args):
                             torch.stack(y_qry, dim=1).to(device),
                         )
                         # print(x_spt.shape, y_spt.shape, x_qry.shape, y_qry.shape)
+                        val_loss, val_acc, val_loss_r, val_acc_r = 0.0, 0.0, 0.0, 0.0
                         for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(
                                 x_spt, y_spt, x_qry, y_qry):
                             if "_at" in args.model_name:
@@ -275,6 +276,7 @@ def main(args):
                     torch.stack(x_qry, dim=1).to(device),
                     torch.stack(y_qry, dim=1).to(device),
                 )
+                test_loss, test_acc, test_loss_r, test_acc_r = 0.0, 0.0, 0.0, 0.0
                 for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(
                         x_spt, y_spt, x_qry, y_qry):
                     ###
@@ -344,7 +346,7 @@ if __name__ == '__main__':
     # Task 1: "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
     # Task 2: "nonfs_classification" (5) "nonfs_classification_at" (6)
     # Task 2: "metanet_maml_at_gru" (7)  "protonet_at_gru" (8)
-    argparser.add_argument('--model_name', type=str, help='The model name', default="generic_metanet")
+    argparser.add_argument('--model_name', type=str, help='The model name', default="protonet_at")
     argparser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=1000)
     argparser.add_argument('--meta_lr', type=float, help='meta-level outer learning rate', default=0.001)  # 0.001
     argparser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=0.4)  # 0.4
