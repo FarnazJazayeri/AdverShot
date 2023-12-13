@@ -115,9 +115,9 @@ class NonFSModel(nn.Module):
             acc_adv = predict(out_adv, y)
             ###
             loss_total = loss + loss_adv
-            loss_total.backward()
+            #loss_total.backward()
         else:
             loss_adv = 0.0
             acc_adv = 0.0
-            loss.backward()
+            #loss.backward()
         return acc, loss, acc_adv, loss_adv
