@@ -43,6 +43,9 @@ class NonFSModel(nn.Module):
         self.adv_alpha = args.adv_attack_alpha
         self.adv_iters = args.adv_attack_iters
         self.meta_lr = args.meta_lr
+        #self.weight = args.weight
+        #if self.weight is not None:
+        #    params =
         self.net = Learner(config, args.imgc, args.imgsz)
         self.meta_optim = optim.Adam(self.net.parameters(), lr=self.meta_lr)
         self.criterion = nn.CrossEntropyLoss()
@@ -72,21 +75,26 @@ class NonFSModel(nn.Module):
         return total_norm / counter
 
     def forward(self, x, y, need_adv=True):
+        self.meta_optim.zero_grad()
         need_adv = self.at
         b, c, h, w = x.size()
         eps, step = (self.adv_eps, self.adv_iters)
-        at = PGD(eps=eps, sigma=self.adv_alpha, nb_iter=step)
+        at = PGD(eps=eps, sigma=self.adv_alpha, nb_iter=step)  ####################
         ###############################
         self.meta_optim.zero_grad()
         out = self.net(x, self.net.parameters(), bn_training=True)
+        #print(out.shape, y.shape)
         loss = self.criterion(out, y)
-        acc = predict(out, y)
+        pred = F.softmax(out, dim=1).argmax(dim=1)
+        acc = np.array(torch.eq(pred, y).sum().item())
         #################
         if need_adv:
-            y_adv = at.attack(self.net, self.net.parameters(), x, y)
-            out_adv = self.net(y_adv, self.net.parameters(), bn_training=True)
-            loss_adv = self.criterion(out, y)
-            acc_adv = predict(out_adv, y)
+            x_adv = at.attack(self.net, self.net.parameters(), x, y)
+            out_adv = self.net(x_adv, self.net.parameters(), bn_training=True)
+            loss_adv = self.criterion(out_adv, y)
+            #acc_adv = predict(out_adv, y)
+            pred_adv = F.softmax(out_adv, dim=1).argmax(dim=1)
+            acc = np.array(torch.eq(pred_adv, y).sum().item())
             ###
             loss_total = loss + loss_adv
             loss_total.backward()
@@ -94,6 +102,7 @@ class NonFSModel(nn.Module):
             loss_adv = torch.Tensor([0.0]).to(x.device)
             acc_adv = 0.0
             loss.backward()
+        self.meta_optim.step()
 
         return acc, loss, acc_adv, loss_adv
 
@@ -106,13 +115,15 @@ class NonFSModel(nn.Module):
         self.meta_optim.zero_grad()
         out = self.net(x, self.net.parameters(), bn_training=True)
         loss = self.criterion(out, y)
-        acc = predict(out, y)
+        pred = F.softmax(out, dim=1).argmax(dim=1)
+        acc = np.array(torch.eq(pred, y).sum().item())
         #################
         if need_adv:
-            y_adv = at.attack(self.net, self.net.parameters(), x, y)
-            out_adv = self.net(y_adv, self.net.parameters(), bn_training=True)
-            loss_adv = self.criterion(out, y)
-            acc_adv = predict(out_adv, y)
+            x_adv = at.attack(self.net, self.net.parameters(), x, y)
+            out_adv = self.net(x_adv, self.net.parameters(), bn_training=True)
+            loss_adv = self.criterion(out_adv, y)
+            pred_adv = F.softmax(out_adv, dim=1).argmax(dim=1)
+            acc = np.array(torch.eq(pred_adv, y).sum().item())
             ###
             loss_total = loss + loss_adv
             #loss_total.backward()
