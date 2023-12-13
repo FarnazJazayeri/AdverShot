@@ -1,6 +1,6 @@
 import torch, os
 import numpy as np
-from data.dataloader import DataProvider
+from data.dataloader import MyDataLoader
 import argparse
 import datetime
 from config import create_config
@@ -63,21 +63,24 @@ def main(args):
     print('Total trainable tensors:', num)
 
     ### 2) Dataloader
-    dataloader = DataProvider(
+    dataloader = MyDataLoader(
         num_tasks=args.task_num,
         n_way=args.n_way,
         k_shot_spt=args.k_spt,
         k_shot_qry=args.k_qry,
     )
+    if args.data_name == "omniglot":
+        if args.dataloader_mode == "few_shot":
+            train_dl, validation_dl, test_dl = dataloader.load_few_shot_dataset('omniglot')
+        else:
+            train_dl, validation_dl, test_dl = dataloader.load_dataset('omniglot')
 
-    if args.dataloader_mode == "few_shot":
-        train_dl, validation_dl, test_dl = dataloader.load_few_shot_dataset(args.data_name)
-    else:
-        train_dl, validation_dl, test_dl = dataloader.load_dataset(args.data_name)
-
-    print(
-        f"Dataset: {args.data_name}_{args.dataloader_mode}, training set: {len(train_dl)}, validation set: {len(validation_dl)}, testing set: {len(test_dl)}")
-
+    elif args.data_name == "cifar10":
+        if args.dataloader_mode == "few_shot":
+            train_dl, validation_dl, test_dl = dataloader.load_few_shot_dataset('cifar10')
+        else:
+            train_dl, validation_dl, test_dl, data_len = dataloader.load_dataset('cifar10')
+    print(f"Dataset: {args.data_name}_{args.dataloader_mode}, training set: {len(train_dl)}, validation set: {len(validation_dl)}, testing set: {len(test_dl)}")
     ### 3) Training phase
     if args.mode == "train":
         current_datetime = datetime.datetime.now()
@@ -138,10 +141,12 @@ def main(args):
                 train_loss_r /= (i + 1)
                 train_acc_r /= (i + 1)
             else:
-                train_loss /= (i + 1) * 64
-                train_acc /= (i + 1) * 64
-                train_loss_r /= (i + 1) * 64
-                train_acc_r /= (i + 1) * 64
+                print(i)
+                print(data_len[0])
+                train_loss /= data_len[0]
+                train_acc /= data_len[0]
+                train_loss_r /= data_len[0]
+                train_acc_r /= data_len[0]
             if (step + 1) % args.train_period_print == 0:
                 print("Epoch: {} Training Acc: {:.4f} Training Loss: {:.4f} Training Acc Robust: {:.4f} Training Loss Robust: {:.4f}\n".format(step, train_acc, train_loss, train_acc_r, train_loss_r))
                 with open(f"{store_dir}/results.txt", "a") as f:
@@ -229,11 +234,8 @@ def main(args):
                     acc_best = val_acc_avg
                     print("Save best weights !!!")
                     torch.save(params, f"{store_dir}/checkpoints/best_new.pt")
-                print(
-                    "Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(
-                        step, val_loss_avg, val_acc_avg, val_loss_r_avg, val_acc_r_avg)
-                )
-
+                print("Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(step, val_acc_avg, val_loss_avg, val_acc_r_avg, val_loss_r_avg)
+                      )
                 with open(f"{store_dir}/results.txt", "a") as f:
                     f.writelines("Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(step, val_acc_avg, val_loss_avg, val_acc_r_avg, val_loss_r_avg))
                     f.close()
@@ -331,7 +333,7 @@ if __name__ == '__main__':
     # Task 1: "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
     # Task 2: "nonfs_classification" (5) "nonfs_classification_at" (6)
     # Task 2: "metanet_maml_at_gru" (7)  "protonet_at_gru" (8)
-    argparser.add_argument('--model_name', type=str, help='The model name', default="protonet_at")
+    argparser.add_argument('--model_name', type=str, help='The model name', default="nonfs_classification")
     argparser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=1000)
     argparser.add_argument('--meta_lr', type=float, help='meta-level outer learning rate', default=0.001)  # 0.001
     argparser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=0.4)  # 0.4
@@ -345,19 +347,18 @@ if __name__ == '__main__':
 
     ### Data
     argparser.add_argument('--mode', type=str, help='The learning phase', default="train")  # train test
-    argparser.add_argument('--data_name', type=str, help='The data configuration', default="omniglot")  # omniglot cifar10
-    argparser.add_argument('--img_shape', type=tuple, help='The image shape', default=(1, 28, 28))  # omniglot: (1, 28, 28)  cifar10: (3, 32, 32)
-    argparser.add_argument('--dataloader_mode', type=str, help='dataloader mode', default="few_shot")  # few_show, non_few_shot
-
+    argparser.add_argument('--data_name', type=str, help='The data configuration', default="cifar10")  # omniglot cifar10
+    argparser.add_argument('--img_shape', type=tuple, help='The image shape', default=(3, 32, 32))  # omniglot: (1, 28, 28)  cifar10: (3, 32, 32)
+    argparser.add_argument('--dataloader_mode', type=str, help='dataloader mode', default="non_few_shot")  # few_show, non_few_shot
 
     ### Learning phases
     argparser.add_argument('--epoch', type=int, help='epoch number', default=1000)  # 1000 5000
-    argparser.add_argument('--n_way', type=int, help='n way', default=5)  # omniglot:5, cifar10: 10
+    argparser.add_argument('--n_way', type=int, help='n way', default=10)  # omniglot:5, cifar10: 10
     argparser.add_argument('--k_spt', type=int, help='k shot for support set', default=1)
     argparser.add_argument('--k_qry', type=int, help='k shot for query set', default=5)
     argparser.add_argument('--imgsz', type=int, help='imgsz', default=28)
     argparser.add_argument('--imgc', type=int, help='imgc', default=1)
-    argparser.add_argument('--train_period_print', type=int, help='train_period_print', default=5)
+    argparser.add_argument('--train_period_print', type=int, help='train_period_print', default=1)
     argparser.add_argument('--test_period_print', type=int, help='test_period_print', default=5)
     argparser.add_argument('--test_size', type=int, help='test_size', default=5)
     argparser.add_argument('--weight_robust', type=float, help='weight_robust', default=1.0)  # 0.1 0.3 0.5 0.7 0.9 1.0 1.1 1.3 1.5 1.7 1.9

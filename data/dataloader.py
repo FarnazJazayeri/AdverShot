@@ -7,7 +7,7 @@ from data.dataset import NShotDataset
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize, Grayscale
 
 
-class DataProvider:
+class MyDataLoader:
     def __init__(self, num_tasks, n_way, k_shot_spt, k_shot_qry, train_split_perc=0.75, validation_split_perc=0.1):
         self.num_tasks = num_tasks
         self.n_way = n_way
@@ -29,13 +29,13 @@ class DataProvider:
         validation_dl = DataLoader(validation_ds, batch_size=64, shuffle=False)
         test_dl = DataLoader(test_ds, batch_size=64, shuffle=False)
 
-        return train_dl, validation_dl, test_dl
+        return train_dl, validation_dl, test_dl, [len(train_ds), len(validation_ds), len(test_ds)]
 
     def make_few_shot_dataloaders(self, dataset):
         train_dataset, validation_dataset, test_dataset = self._random_split(dataset)
-        train_few_shot_dataset = self.make_few_shot_dataset(train_dataset, num_tasks=self.num_tasks)
-        validation_few_shot_dataset = self.make_few_shot_dataset(validation_dataset, num_tasks=self.num_tasks)
-        test_few_shot_dataset = self.make_few_shot_dataset(test_dataset, num_tasks=self.num_tasks)
+        train_few_shot_dataset = self.make_few_shot_dataset(train_dataset)
+        validation_few_shot_dataset = self.make_few_shot_dataset(validation_dataset, num_tasks=200)
+        test_few_shot_dataset = self.make_few_shot_dataset(test_dataset, num_tasks=200)
 
         train_few_shot_dataloader = DataLoader(train_few_shot_dataset, batch_size=64, shuffle=True)
         validation_few_shot_dataloader = DataLoader(validation_few_shot_dataset, batch_size=64, shuffle=False)
@@ -69,11 +69,11 @@ class DataProvider:
         elif name == "cifar100":
             from torchvision.datasets import CIFAR100
 
-            return CIFAR100('./dataset', *args, **kwargs)
+            return CIFAR100(*args, **kwargs)
         elif name == "mnist":
             from torchvision.datasets import MNIST
 
-            return MNIST('./dataset', *args, **kwargs)
+            return MNIST(*args, **kwargs)
         else:
             raise ValueError(f"Unknown dataset {name}")
 

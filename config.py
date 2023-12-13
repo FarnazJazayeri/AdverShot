@@ -15,22 +15,26 @@ def gateblock(hidden_channel, main_layer='conv2d', activation='sigmoid'):
 
 def create_config(num_layers, hidden_channel, out_channel, img_shape, gate_rnr):
     c, h, w = img_shape
+    h_tmp = h
+    max_layer = 0
     print(img_shape)
     config = []
     ### back_bone
     for l in range(num_layers):
+        h_tmp /= 2
         if l == 0:
             c_in = c
             c_out = hidden_channel
         else:
             c_in = int(c_out)
             c_out = int(c_out / 2)
-
-        # if (l+1)%2 ==0:
-        block = basicblock(in_channel=c_in, out_channel=c_out, k_s_p=(3, 2, 1))
-        # else:
-        #    block = basicblock(c_in, c_out, k_s_p =(3, 1, 1))
+        if h_tmp >= 3:
+            max_layer += 1
+            block = basicblock(in_channel=c_in, out_channel=c_out, k_s_p=(3, 2, 1))
+        else:
+            block = basicblock(c_in, c_out, k_s_p=(3, 1, 1))
         config += block
+
     ### GRU
     if gate_rnr == "gru":
         block = basicblock(c_in, c_out * 2)
@@ -44,7 +48,7 @@ def create_config(num_layers, hidden_channel, out_channel, img_shape, gate_rnr):
     ###
     ### head
     config.append(('flatten', []))
-    h_out = int(np.ceil(h / 2 ** (num_layers)))
+    h_out = int(np.ceil(h / 2 ** (max_layer)))
     print(h_out)
     c_in = c_out * h_out ** 2
 
