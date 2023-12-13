@@ -3,7 +3,6 @@ import numpy as np
 from data.dataloader import DataProvider
 import argparse
 import datetime
-import datetime
 from config import create_config
 
 
@@ -18,29 +17,27 @@ def main(args):
     ### Model config
     if args.model_name == "generic_metanet" or args.model_name == "resnet18_maml":
         from meta_maml import Meta
-    # elif args.model_name == "metanet_maml_at":
+
     elif "maml_at" in args.model_name:
         from meta_maml_at import Meta
+
     elif args.model_name == "generic_protonet" or args.model_name == "resnet18_protonet":
         from meta_proto import Meta
-    # elif args.model_name == "protonet_at":
+
     elif "protonet_at" in args.model_name:
         from meta_proto_at import Meta
+
     elif args.model_name == "nonfs_classification":
         from nonfs_classification_model import NonFSModel
-        pass
+
 
     ### 1) Model
     if args.model_name == "generic_metanet" or args.model_name == "metanet_maml_at":
-        # from config import config_maml
-        # config = config_maml
         config = create_config(num_layers=args.num_layers,
                                hidden_channel=args.hidden_channel, out_channel=args.n_way,
                                img_shape=args.img_shape, gate_rnr=False)
         model = Meta(args, config).to(device)
     elif args.model_name == "generic_protonet" or args.model_name == "protonet_at":
-        # from config import config_proto
-        # config = config_proto
         config = create_config(num_layers=args.num_layers,
                                hidden_channel=args.hidden_channel, out_channel=args.emb_channel,
                                img_shape=args.img_shape, gate_rnr=False)
@@ -59,15 +56,6 @@ def main(args):
         model = NonFSModel(args, config, True).to(device)
 
     print("---- Model config ----", config)
-    # elif args.model_name == "resnet18_maml" or args.model_name == "resnet18_maml_at":
-    #    # from config import config_maml_resnet_18
-    #    config = None
-    #    model = Meta(args, config).to(device)
-
-    # elif args.model_name == "resnet18_protonet" or args.model_name == "resnet18_protonet_at":
-    #    # from config import config_proto_resnet_18
-    #    config = None
-    #    model = Meta(args, config).to(device)
 
     tmp = filter(lambda x: x.requires_grad, model.parameters())
     num = sum(map(lambda x: np.prod(x.shape), tmp))
@@ -91,7 +79,6 @@ def main(args):
         f"Dataset: {args.data_name}_{args.dataloader_mode}, training set: {len(train_dl)}, validation set: {len(validation_dl)}, testing set: {len(test_dl)}")
 
     ### 3) Training phase
-    ##
     if args.mode == "train":
         current_datetime = datetime.datetime.now()
         datetime_string = current_datetime.strftime('%Y-%m-%d_%H-%M-%S')
@@ -103,9 +90,8 @@ def main(args):
             else:
                 store_dir = f"experiments/{args.data_name}/{args.model_name}_{args.adv_defense}/l{args.num_layers}_h{args.hidden_channel}_r{str(args.weight_robust)}"
             os.makedirs(store_dir, exist_ok=True)
-        ##
+
         acc_best = 0.0
-        acc_test = 0.0
         val_loss_list, val_acc_list, train_loss_list, train_acc_list = [], [], [], []
         val_loss_r_list, val_acc_r_list, train_loss_r_list, train_acc_r_list = [], [], [], []
         step = 0
@@ -113,7 +99,6 @@ def main(args):
             val_loss, val_acc, train_loss, train_acc = 0.0, 0.0, 0.0, 0.0
             val_loss_r, val_acc_r, train_loss_r, train_acc_r = 0.0, 0.0, 0.0, 0.0
 
-            # for i, (x_spt, y_spt, x_qry, y_qry) in enumerate(train_dl):
             for i, batch in enumerate(train_dl):
                 if args.dataloader_mode == "few_shot":
                     x_spt, y_spt, x_qry, y_qry = batch
@@ -123,7 +108,6 @@ def main(args):
                         torch.stack(x_qry, dim=1).to(device),
                         torch.stack(y_qry, dim=1).to(device),
                     )
-                    # print(i, x_spt.shape, x_qry.shape)
                     y_spt = y_spt.type(torch.LongTensor).to(device)
                     y_qry = y_qry.type(torch.LongTensor).to(device)
                 else:
@@ -147,6 +131,7 @@ def main(args):
                     accs, loss = model(x_spt, y_spt, x_qry, y_qry)
                     train_loss += loss.detach().cpu().numpy()
                     train_acc += accs
+
             if args.dataloader_mode == "few_shot":
                 train_loss /= (i + 1)
                 train_acc /= (i + 1)
