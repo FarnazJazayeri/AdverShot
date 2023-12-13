@@ -7,7 +7,7 @@ from data.dataset import NShotDataset
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize, Grayscale
 
 
-class MyDataLoader:
+class DataProvider:
     def __init__(self, num_tasks, n_way, k_shot_spt, k_shot_qry, train_split_perc=0.75, validation_split_perc=0.1):
         self.num_tasks = num_tasks
         self.n_way = n_way
@@ -69,11 +69,11 @@ class MyDataLoader:
         elif name == "cifar100":
             from torchvision.datasets import CIFAR100
 
-            return CIFAR100(*args, **kwargs)
+            return CIFAR100('./dataset', *args, **kwargs)
         elif name == "mnist":
             from torchvision.datasets import MNIST
 
-            return MNIST(*args, **kwargs)
+            return MNIST('./dataset', *args, **kwargs)
         else:
             raise ValueError(f"Unknown dataset {name}")
 

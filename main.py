@@ -1,6 +1,6 @@
 import torch, os
 import numpy as np
-from data.dataloader import MyDataLoader
+from data.dataloader import DataProvider
 import argparse
 import datetime
 import datetime
@@ -75,17 +75,13 @@ def main(args):
     print('Total trainable tensors:', num)
 
     ### 2) Dataloader
-    dataloader = MyDataLoader(
+    dataloader = DataProvider(
         num_tasks=args.task_num,
         n_way=args.n_way,
         k_shot_spt=args.k_spt,
         k_shot_qry=args.k_qry,
     )
-    if args.data_name == "omniglot":
-        if args.dataloader_mode == "few_shot":
-            train_dl, validation_dl, test_dl = dataloader.load_few_shot_dataset('omniglot')
-        else:
-            train_dl, validation_dl, test_dl = dataloader.load_dataset('omniglot')
+
 
     elif args.data_name == "cifar10":
         if args.dataloader_mode == "few_shot":
@@ -93,6 +89,16 @@ def main(args):
         else:
             train_dl, validation_dl, test_dl, data_len = dataloader.load_dataset('cifar10')
     print(f"Dataset: {args.data_name}_{args.dataloader_mode}, training set: {len(train_dl)}, validation set: {len(validation_dl)}, testing set: {len(test_dl)}")
+
+    if args.dataloader_mode == "few_shot":
+        train_dl, validation_dl, test_dl = dataloader.load_few_shot_dataset(args.data_name)
+    else:
+        train_dl, validation_dl, test_dl = dataloader.load_dataset(args.data_name)
+
+    print(
+        f"Dataset: {args.data_name}_{args.dataloader_mode}, training set: {len(train_dl)}, validation set: {len(validation_dl)}, testing set: {len(test_dl)}")
+
+>>>>>>> 0991d590f126237ce86b3398de009e808e358c99
     ### 3) Training phase
     ##
     if args.mode == "train":
@@ -247,8 +253,11 @@ def main(args):
                     acc_best = val_acc_avg
                     print("Save best weights !!!")
                     torch.save(params, f"{store_dir}/checkpoints/best_new.pt")
-                print("Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(step, val_acc_avg, val_loss_avg, val_acc_r_avg, val_loss_r_avg)
-                      )
+                print(
+                    "Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(
+                        step, val_loss_avg, val_acc_avg, val_loss_r_avg, val_acc_r_avg)
+                )
+
                 with open(f"{store_dir}/results.txt", "a") as f:
                     f.writelines("Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(step, val_acc_avg, val_loss_avg, val_acc_r_avg, val_loss_r_avg))
                     f.close()
@@ -363,6 +372,7 @@ if __name__ == '__main__':
     argparser.add_argument('--data_name', type=str, help='The data configuration', default="cifar10")  # omniglot cifar10
     argparser.add_argument('--img_shape', type=tuple, help='The image shape', default=(3, 32, 32))  # omniglot: (1, 28, 28)  cifar10: (3, 32, 32)
     argparser.add_argument('--dataloader_mode', type=str, help='dataloader mode', default="non_few_shot")  # few_show, non_few_shot
+
 
     ### Learning phases
     argparser.add_argument('--epoch', type=int, help='epoch number', default=1000)  # 1000 5000
