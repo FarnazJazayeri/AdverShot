@@ -102,9 +102,9 @@ def main(args):
             store_dir = args.store_dir
         else:
             if args.adv_defense is None:
-                store_dir = f"experiments/{args.data_name}/{args.model_name}/{datetime_string}"
+                store_dir = f"experiments/{args.data_name}/{args.model_name}/l{args.num_layers}_h{args.hidden_channel}"
             else:
-                store_dir = f"experiments/{args.data_name}/{args.model_name}_{args.adv_defense}/{datetime_string}"
+                store_dir = f"experiments/{args.data_name}/{args.model_name}_{args.adv_defense}/l{args.num_layers}_h{args.hidden_channel}"
             os.makedirs(store_dir, exist_ok=True)
         ##
         acc_best = 0.0
@@ -344,7 +344,7 @@ if __name__ == '__main__':
     # Task 1: "generic_metanet" (1) "metanet_maml_at" (2) "generic_protonet" (3) "protonet_at" (4)
     # Task 2: "nonfs_classification" (5) "nonfs_classification_at" (6)
     # Task 2: "metanet_maml_at_gru" (7)  "protonet_at_gru" (8)
-    argparser.add_argument('--model_name', type=str, help='The model name', default="nonfs_classification")
+    argparser.add_argument('--model_name', type=str, help='The model name', default="generic_metanet")
     argparser.add_argument('--task_num', type=int, help='meta batch size, namely task num', default=1000)
     argparser.add_argument('--meta_lr', type=float, help='meta-level outer learning rate', default=0.001)  # 0.001
     argparser.add_argument('--update_lr', type=float, help='task-level inner update learning rate', default=0.4)  # 0.4
@@ -352,25 +352,25 @@ if __name__ == '__main__':
     argparser.add_argument('--update_step_test', type=int, help='update steps for finetunning', default=10)
     argparser.add_argument('--hidden_channel', type=int, help='hidden_channel', default=128)  # 64 128
     argparser.add_argument('--emb_channel', type=int, help='emb_channel', default=64)  # 64
-    argparser.add_argument('--num_layers', type=int, help='The number of layers', default=4)
+    argparser.add_argument('--num_layers', type=int, help='The number of layers', default=3)
     argparser.add_argument('--weight', type=str, help='The learning phase', default=None)
     argparser.add_argument('--store_dir', type=str, help='The learning phase', default=None)
 
     ### Data
     argparser.add_argument('--mode', type=str, help='The learning phase', default="train")  # train test
-    argparser.add_argument('--data_name', type=str, help='The data configuration', default="cifar10")  # omniglot cifar10
-    argparser.add_argument('--img_shape', type=tuple, help='The image shape', default=(3, 32, 32))  # omniglot: (1, 28, 28)  cifar10: (3, 32, 32)
-    argparser.add_argument('--dataloader_mode', type=str, help='dataloader mode', default="non_few_shot")  # few_show, non_few_shot
+    argparser.add_argument('--data_name', type=str, help='The data configuration', default="omniglot")  # omniglot cifar10
+    argparser.add_argument('--img_shape', type=tuple, help='The image shape', default=(1, 28, 28))  # omniglot: (1, 28, 28)  cifar10: (3, 32, 32)
+    argparser.add_argument('--dataloader_mode', type=str, help='dataloader mode', default="few_shot")  # few_show, non_few_shot
 
     ### Learning phases
     argparser.add_argument('--epoch', type=int, help='epoch number', default=1000)  # 1000 5000
-    argparser.add_argument('--n_way', type=int, help='n way', default=10)  # omniglot:5, cifar10: 10
+    argparser.add_argument('--n_way', type=int, help='n way', default=5)  # omniglot:5, cifar10: 10
     argparser.add_argument('--k_spt', type=int, help='k shot for support set', default=1)
     argparser.add_argument('--k_qry', type=int, help='k shot for query set', default=5)
     argparser.add_argument('--imgsz', type=int, help='imgsz', default=28)
     argparser.add_argument('--imgc', type=int, help='imgc', default=1)
-    argparser.add_argument('--train_period_print', type=int, help='train_period_print', default=1)
-    argparser.add_argument('--test_period_print', type=int, help='test_period_print', default=1)
+    argparser.add_argument('--train_period_print', type=int, help='train_period_print', default=5)
+    argparser.add_argument('--test_period_print', type=int, help='test_period_print', default=5)
     argparser.add_argument('--test_size', type=int, help='test_size', default=5)
     argparser.add_argument('--weight_robust', type=float, help='weight_robust', default=1.0)  # 0.1 0.3 0.5 0.7 0.9 1.0 1.1 1.3 1.5 1.7 1.9
 
