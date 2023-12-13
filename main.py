@@ -69,17 +69,12 @@ def main(args):
         k_shot_spt=args.k_spt,
         k_shot_qry=args.k_qry,
     )
-    if args.data_name == "omniglot":
-        if args.dataloader_mode == "few_shot":
-            train_dl, validation_dl, test_dl = dataloader.load_few_shot_dataset('omniglot')
-        else:
-            train_dl, validation_dl, test_dl = dataloader.load_dataset('omniglot')
 
-    elif args.data_name == "cifar10":
-        if args.dataloader_mode == "few_shot":
-            train_dl, validation_dl, test_dl = dataloader.load_few_shot_dataset('cifar10')
-        else:
-            train_dl, validation_dl, test_dl = dataloader.load_dataset('cifar10')
+    if args.dataloader_mode == "few_shot":
+        train_dl, validation_dl, test_dl = dataloader.load_few_shot_dataset(args.data_name)
+    else:
+        train_dl, validation_dl, test_dl = dataloader.load_dataset('omniglot')
+
     print(
         f"Dataset: {args.data_name}_{args.dataloader_mode}, training set: {len(train_dl)}, validation set: {len(validation_dl)}, testing set: {len(test_dl)}")
     ### 3) Training phase
@@ -220,7 +215,7 @@ def main(args):
                 print(
                     "Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(
                         step, val_loss_avg, val_acc_avg, val_loss_r_avg, val_acc_r_avg)
-                    )
+                )
                 with open(f"{store_dir}/results.txt", "a") as f:
                     f.writelines(
                         "Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(
@@ -309,7 +304,7 @@ if __name__ == '__main__':
     ### Data
     argparser.add_argument('--mode', type=str, help='The learning phase', default="train")  # train test
     argparser.add_argument('--data_name', type=str, help='The data configuration',
-                           default="omniglot")  # omniglot cifar10
+                           default="cifar100")  # omniglot cifar10
     argparser.add_argument('--img_shape', type=tuple, help='The image shape',
                            default=(1, 28, 28))  # omniglot: (1, 28, 28)  cifar10: (3, 32, 32)
     argparser.add_argument('--dataloader_mode', type=str, help='dataloader mode',
