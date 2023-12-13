@@ -246,10 +246,10 @@ def main(args):
                     acc_best = val_acc_avg
                     print("Save best weights !!!")
                     torch.save(params, f"{store_dir}/checkpoints/best_new.pt")
-                print("Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(step, val_loss_avg, val_acc_avg, val_loss_r_avg, val_acc_r_avg)
+                print("Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(step, val_acc_avg, val_loss_avg, val_acc_r_avg, val_loss_r_avg)
                       )
                 with open(f"{store_dir}/results.txt", "a") as f:
-                    f.writelines("Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(step, val_loss_avg, val_acc_avg, val_loss_r_avg, val_acc_r_avg))
+                    f.writelines("Epoch: {} Testing Acc: {:.4f}, Testing Loss: {:.4f}, Testing Acc Robust: {:.4f}, Testing Loss Robust: {:.4f} \n".format(step, val_acc_avg, val_loss_avg, val_acc_r_avg, val_loss_r_avg))
                     f.close()
             step += 1
     else:
