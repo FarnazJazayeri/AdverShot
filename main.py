@@ -156,8 +156,6 @@ def main(args):
                 train_loss_r /= (i + 1)
                 train_acc_r /= (i + 1)
             else:
-                print(i)
-                print(data_len[0])
                 train_loss /= data_len[0]
                 train_acc /= data_len[0]
                 train_loss_r /= data_len[0]
