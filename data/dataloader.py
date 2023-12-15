@@ -1,14 +1,30 @@
-from torchvision import datasets, transforms
-
+import torch
 from torch.utils.data import Dataset, DataLoader, random_split
-
+from torchvision.transforms import Compose, Resize, ToTensor, Normalize, Grayscale
 from data.dataset import NShotDataset
 
-from torchvision.transforms import Compose, Resize, ToTensor, Normalize, Grayscale
+
+class OneHotTransform:
+    def __init__(self, num_classes):
+        self.num_classes = num_classes
+
+    def __call__(self, tensor):
+        # Create one-hot encoding
+        one_hot = torch.zeros(self.num_classes).scatter_(0, tensor, 1)
+
+        return one_hot
 
 
 class MyDataLoader:
-    def __init__(self, num_tasks, n_way, k_shot_spt, k_shot_qry, train_split_perc=0.75, validation_split_perc=0.1):
+    def __init__(
+        self,
+        num_tasks,
+        n_way,
+        k_shot_spt,
+        k_shot_qry,
+        train_split_perc=0.75,
+        validation_split_perc=0.1,
+    ):
         self.num_tasks = num_tasks
         self.n_way = n_way
         self.k_shot_spt = k_shot_spt
@@ -29,19 +45,40 @@ class MyDataLoader:
         validation_dl = DataLoader(validation_ds, batch_size=64, shuffle=False)
         test_dl = DataLoader(test_ds, batch_size=64, shuffle=False)
 
-        return train_dl, validation_dl, test_dl, [len(train_ds), len(validation_ds), len(test_ds)]
+        return (
+            train_dl,
+            validation_dl,
+            test_dl,
+            [len(train_ds), len(validation_ds), len(test_ds)],
+        )
 
     def make_few_shot_dataloaders(self, dataset):
         train_dataset, validation_dataset, test_dataset = self._random_split(dataset)
-        train_few_shot_dataset = self.make_few_shot_dataset(train_dataset, num_tasks=self.num_tasks)
-        validation_few_shot_dataset = self.make_few_shot_dataset(validation_dataset, num_tasks=self.num_tasks)
-        test_few_shot_dataset = self.make_few_shot_dataset(test_dataset, num_tasks=self.num_tasks)
+        train_few_shot_dataset = self.make_few_shot_dataset(
+            train_dataset, num_tasks=self.num_tasks
+        )
+        validation_few_shot_dataset = self.make_few_shot_dataset(
+            validation_dataset, num_tasks=self.num_tasks
+        )
+        test_few_shot_dataset = self.make_few_shot_dataset(
+            test_dataset, num_tasks=self.num_tasks
+        )
 
-        train_few_shot_dataloader = DataLoader(train_few_shot_dataset, batch_size=64, shuffle=True)
-        validation_few_shot_dataloader = DataLoader(validation_few_shot_dataset, batch_size=64, shuffle=False)
-        test_few_shot_dataloader = DataLoader(test_few_shot_dataset, batch_size=64, shuffle=False)
+        train_few_shot_dataloader = DataLoader(
+            train_few_shot_dataset, batch_size=64, shuffle=True
+        )
+        validation_few_shot_dataloader = DataLoader(
+            validation_few_shot_dataset, batch_size=64, shuffle=False
+        )
+        test_few_shot_dataloader = DataLoader(
+            test_few_shot_dataset, batch_size=64, shuffle=False
+        )
 
-        return train_few_shot_dataloader, validation_few_shot_dataloader, test_few_shot_dataloader
+        return (
+            train_few_shot_dataloader,
+            validation_few_shot_dataloader,
+            test_few_shot_dataloader,
+        )
 
     def make_few_shot_dataset(self, dataset, num_tasks=None):
         return NShotDataset(
@@ -50,30 +87,34 @@ class MyDataLoader:
             k_sprt=self.k_shot_spt,
             k_query=self.k_shot_qry,
             size=num_tasks or self.num_tasks,
-
         )
 
     def _get_dataset(self, name: str, *args, **kwargs) -> Dataset:
         kwargs.setdefault("download", True)
         kwargs.setdefault("transform", self._get_transforms(name))
+        # kwargs.setdefault("target_transform", OneHotTransform(self.n_way)) # if we want to use one-hot encoding
 
         name = name.lower()
         if name == "omniglot":
             from torchvision.datasets import Omniglot
 
-            return Omniglot('./dataset', *args, **kwargs)
+            return Omniglot("./dataset", *args, **kwargs)
         elif name == "cifar10":
             from torchvision.datasets import CIFAR10
 
-            return CIFAR10('./dataset', *args, **kwargs)
+            return CIFAR10("./dataset", *args, **kwargs)
         elif name == "cifar100":
             from torchvision.datasets import CIFAR100
 
-            return CIFAR100('./dataset/', *args, **kwargs)
+            return CIFAR100("./dataset/", *args, **kwargs)
         elif name == "mnist":
             from torchvision.datasets import MNIST
 
-            return MNIST('./dataset/', *args, **kwargs)
+            return MNIST("./dataset/", *args, **kwargs)
+        elif name == "miniimagenet":
+            from learn2learn.vision.datasets import MiniImagenet
+
+            return MiniImagenet("./dataset/", *args, **kwargs)
         else:
             raise ValueError(f"Unknown dataset {name}")
 
@@ -81,11 +122,7 @@ class MyDataLoader:
         name = name.lower()
         if name == "omniglot":
             return Compose(
-                [
-                    Resize((28, 28)),
-                    Grayscale(num_output_channels=1),
-                    ToTensor()
-                ]
+                [Resize((28, 28)), Grayscale(num_output_channels=1), ToTensor()]
             )
         elif name == "cifar10":
             return Compose(
@@ -111,6 +148,13 @@ class MyDataLoader:
                     Normalize((0.1307,), (0.3081,)),
                 ]
             )
+        elif name == "miniimagenet":
+            return Compose(
+                [
+                    Resize((84, 84)),
+                    Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+                ]
+            )
         else:
             return None
 
@@ -118,7 +162,8 @@ class MyDataLoader:
         train_size = int(self.train_split_perc * len(dataset))
         validation_size = int(self.valid_split_perc * len(dataset))
         test_size = len(dataset) - train_size - validation_size
-        train_dataset, validation_dataset, test_dataset = random_split(dataset,
-                                                                       [train_size, validation_size, test_size])
+        train_dataset, validation_dataset, test_dataset = random_split(
+            dataset, [train_size, validation_size, test_size]
+        )
 
         return train_dataset, validation_dataset, test_dataset
