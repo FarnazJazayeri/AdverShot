@@ -42,7 +42,7 @@ class NShotDataset(Dataset):
         self.reset_labels = reset_labels
 
         if cache:
-            self.__getitem__ = lru_cache(maxsize=None)(self.__getitem__)
+            self._get_sprt_qry_idx = lru_cache(maxsize=None)(self._get_sprt_qry_idx)
 
         if targets is None:
             if hasattr(dataset, "targets"):
@@ -74,8 +74,8 @@ class NShotDataset(Dataset):
     def __len__(self) -> int:
         return self.size
 
-    def _get_sprt_qry_idx(self, class_idx):
-        class_idx = torch.as_tensor(class_idx).view(-1)
+    def _get_sprt_qry_idx(self, idx):
+        sampled_classes = self.unique_targets[self.shuffled_indices[idx]]
 
         # Randomly sample indices for support and query sets for chosen classes
         sampled_indices = torch.stack(
@@ -83,7 +83,7 @@ class NShotDataset(Dataset):
                 data[torch.randperm(len(data), generator=self.seed)][
                     : self.k_sprt + self.k_query
                 ]
-                for data in self.per_target_data[class_idx]
+                for data in self.per_target_data[sampled_classes]
             ]
         )
 
@@ -96,12 +96,10 @@ class NShotDataset(Dataset):
             sprt_idx = sprt_idx[torch.randperm(len(sprt_idx), generator=self.seed)]
             query_idx = query_idx[torch.randperm(len(query_idx), generator=self.seed)]
 
-        return sprt_idx, query_idx
+        return (sprt_idx, query_idx), sampled_classes
 
-    def __getitem__(self, idx: int):
-        sampled_classes = self.unique_targets[self.shuffled_indices[idx]]
-
-        sprt_idx, query_idx = self._get_sprt_qry_idx(sampled_classes)
+    def __getitem__(self, i: int):
+        (sprt_idx, query_idx), sampled_classes = self._get_sprt_qry_idx(i)
 
         # Create Subset objects for support and query data
         sprt_data = Subset(self.dataset, sprt_idx)
