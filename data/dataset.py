@@ -101,20 +101,20 @@ class NShotDataset(Dataset):
     def __getitem__(self, i: int):
         (sprt_idx, query_idx), sampled_classes = self._get_sprt_qry_idx(i)
 
-        # Create Subset objects for support and query data
-        sprt_data = Subset(self.dataset, sprt_idx)
-        query_data = Subset(self.dataset, query_idx)
+        # Extract support and query data directly without creating Subset objects
+        sprt_data = list(map(self.dataset.__getitem__, sprt_idx))
+        query_data = list(map(self.dataset.__getitem__, query_idx))
 
         # Reset labels to be in range [0, n_way] for each set
         if self.reset_labels:
-            sprt_data = [
-                (x, torch.argwhere(sampled_classes == y).squeeze())
-                for x, y in sprt_data
-            ]
-            query_data = [
-                (x, torch.argwhere(sampled_classes == y).squeeze())
-                for x, y in query_data
-            ]
+            # Create a mapping from original class indices to new indices
+            class_map = {
+                original: new for new, original in enumerate(sampled_classes.tolist())
+            }
+
+            # Apply the mapping to the labels
+            sprt_data = [(x, class_map[y]) for x, y in sprt_data]
+            query_data = [(x, class_map[y]) for x, y in query_data]
 
         return sprt_data, query_data
 
